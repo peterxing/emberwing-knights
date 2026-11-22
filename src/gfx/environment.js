@@ -47,7 +47,7 @@ export const ENV_PRESETS = {
     zenith: 0x4a62c0, skyMid: 0x9a8ad0, horizon: 0xffc890, skyCurve: 0.42,
     hazeColor: 0xffd8c0, haze: 0.35,
     bodyAz: 160, bodyEl: 5, bodySize: 0.05, bodyColor: 0xfff0d0, bodyIntensity: 6, rays: 0.25,
-    glowColor: 0xffc890, glow: 0.6, glowPow: 4, hGlowColor: 0xff9a6a, hGlow: 0.6,
+    glowColor: 0xffc890, glow: 0.45, glowPow: 6, hGlowColor: 0xff9a6a, hGlow: 0.55,
     cloudCover: 0.58, cloudSoft: 0.07, cloudScale: 0.6, cloudSpeed: 0.006,
     cloudLit: 0xffd2c0, cloudShade: 0x8c7fb8, cloudUnder: 0xff9f8a, cloudRim: 0xfff0e0, cumulus: 0.6, cumulusHeight: 0.16,
     stars: 0.15,

@@ -168,7 +168,7 @@ export class Battle {
     await engine.fade(0, 0.8);
     await runScript(this, this.ch.intro);
     const lead = this.board.units.find((u) => u.id === 'kael' && u.alive);
-    if (lead) this.rig.focus(this.world.tileCenter(lead.x, lead.y), { dist: Math.max(this.rig.goalDist, 19.5), pitch: 0.92 });
+    if (lead) this.rig.focus(this.world.tileCenter(lead.x, lead.y), { dist: Math.max(this.rig.goalDist, window.innerWidth < window.innerHeight ? 27 : 19.5), pitch: 0.92 });
     ui.showHud(true);
     while (!this.over) {
       await this.playerPhase();

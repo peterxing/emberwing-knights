@@ -77,6 +77,7 @@ export class Cinematic {
   shake(m = 0.12) { this.shakeMag = m; this.shakeT = 0.35; }
 
   camTo(pos, look, dur = 0.6, e = ease.inOutCubic) {
+    if (this.big) { pos = pos.clone(); pos.z = pos.z * 1.45 + 1.0; pos.y += 0.9; look = look.clone(); look.y += 0.55; }
     const p0 = this.camPos.clone(), l0 = this.camLook.clone();
     return tweens.run(dur, (t) => { this.camPos.lerpVectors(p0, pos, t); this.camLook.lerpVectors(l0, look, t); }, e);
   }
@@ -106,8 +107,9 @@ export class Cinematic {
     const leftU = aRight ? D : A, rightU = aRight ? A : D;
     const mL = this._model(leftU), mR = this._model(rightU);
     const spread = !heal && res.dist >= 2 ? 1.0 : 0;
-    const homeL = this.arena.leftSpot.clone().add(V(-spread, 0, 0));
-    const homeR = this.arena.rightSpot.clone().add(V(spread, 0, 0));
+    const homeL = this.arena.leftSpot.clone().add(V(-spread - (leftU.big ? 1.4 : 0), 0, 0));
+    const homeR = this.arena.rightSpot.clone().add(V(spread + (rightU.big ? 1.4 : 0), 0, 0));
+    this.big = !!(A.big || D.big);
     if (A === D) { mR.root.position.copy(homeR); } else { mL.root.position.copy(homeL); mR.root.position.copy(homeR); }
     mL.setFacing(Math.PI / 2, true); mR.setFacing(-Math.PI / 2, true);
     mL.setDissolve(0); mR.setDissolve(0); mL.setGreyed(false); mR.setGreyed(false);
@@ -235,7 +237,7 @@ export class Cinematic {
         sm.setState(S.flying ? 'fly' : 'ready');
       }
     } else if (mode === 'bow' || mode === 'throw') {
-      await this.camTo(V(home.x * 1.25, 1.1, 3.9), V(this.homes.get(T).x * 0.6, 0.85, 0), 0.4);
+      await this.camTo(V(home.x - dir * 1.3, 1.1, 3.0), V(home.x + dir * 1.6, 0.9, 0), 0.4);
       if (mode === 'bow') this.audio.sfx('bowDraw');
       let proj = null;
       await sm.play(mode === 'bow' ? 'shoot' : 'attack', {
@@ -251,14 +253,14 @@ export class Cinematic {
       await wait(0.25);
     } else if (mode === 'magic') {
       const col = ELEMENT_COLOR[sp.element] || 0xb48cff;
-      await this.camTo(V(home.x * 1.3, 0.75, 3.6), V(this.homes.get(T).x * 0.5, 1.0, 0), 0.45);
+      await this.camTo(V(home.x - dir * 1.4, 1.15, 2.6), V(home.x + dir * 1.2, 0.9, 0), 0.45);
       const circle = this.vfx.magicCircle(sm.getAnchor('feet'), { color: col, radius: 0.85, duration: 1.6 });
       this.audio.sfx('magicCharge');
       let spellP = null;
       await sm.play('cast', {
         speed: this.fast ? 2.5 : 1,
         onImpact: () => {
-          this.audio.sfx({ fire: 'fire', ice: 'ice', thunder: 'magicCharge', holy: 'holy', dark: 'dark' }[sp.element] || 'fire');
+          this.audio.sfx({ fire: 'fire', ice: 'ice', thunder: 'thunder', holy: 'holy', dark: 'dark' }[sp.element] || 'fire');
           spellP = this.vfx.spell(sp.fx, { from: sm.getAnchor('chest'), to: tgtChest.clone(), ground: tm.getAnchor('feet'), onImpact: () => impact() });
           this.camTo(V(this.homes.get(T).x * 0.3, 1.25, 5.6), V(this.homes.get(T).x * 0.8, 0.95, 0), 0.6);
         },

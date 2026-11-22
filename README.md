@@ -10,13 +10,17 @@ field, particle spell effects and a fully synthesised orchestral soundtrack.
 
 > All characters, story, art and music are original. Nothing from the original games is used.
 
-![Title screen](docs/title.png)
+![Title screen](docs/title.jpg)
 
-| Tactics map | Battle cutscene |
+| Tactics map | Battle forecast |
 | --- | --- |
-| ![Tactics](docs/tactics.png) | ![Battle](docs/battle.png) |
-| **Story scenes** | **Sands of Aurelion** |
-| ![Dialogue](docs/dialogue.png) | ![Desert](docs/desert.png) |
+| ![Tactics](docs/tactics.jpg) | ![Forecast](docs/forecast.jpg) |
+| **FD2-style battle cutscenes** | **Story scenes with anime portraits** |
+| ![Battle](docs/battle-cast.jpg) | ![Dialogue](docs/dialogue.jpg) |
+| **Fortress of Ash (night)** | **Sands of Aurelion** |
+| ![Fortress](docs/fortress.jpg) | ![Desert](docs/desert.jpg) |
+| **Heart of Aurelion** | **Camp & equipment** |
+| ![Finale](docs/finale.jpg) | ![Camp](docs/camp.jpg) |
 
 ## The story
 

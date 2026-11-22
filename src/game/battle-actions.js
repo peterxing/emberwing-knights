@@ -263,7 +263,8 @@ export const actions = {
       };
       if (sp && sp.kind === 'magic') {
         let p = null;
-        await sv.char.play('cast', { onImpact: () => { p = this.vfx.spell(sp.fx, { from: sv.char.getAnchor('chest'), to: chest, ground: tv.char.getAnchor('feet'), onImpact: impact, scale: 1.4 }); } });
+        this.game.audio.sfx('magicCharge', { volume: 0.6 });
+        await sv.char.play('cast', { onImpact: () => { this.game.audio.sfx({ fire: 'fire', ice: 'ice', thunder: 'thunder', holy: 'holy', dark: 'dark' }[sp.element] || 'fire'); p = this.vfx.spell(sp.fx, { from: sv.char.getAnchor('chest'), to: chest, ground: tv.char.getAnchor('feet'), onImpact: impact, scale: 1.4 }); } });
         if (p) await p;
       } else if ((w && w.type === 'bow') || res.dist >= 2) {
         let p = null;
@@ -271,6 +272,7 @@ export const actions = {
         if (p) await p;
       } else {
         if (sp && sp.kind === 'physical') this.vfx.spell('dragonFang', { from: sv.char.getAnchor('weapon'), to: chest, ground: tv.char.getAnchor('feet'), scale: 1.3 });
+        this.game.audio.sfx('swing');
         await sv.lunge(T.x, T.y, impact);
       }
       await wait(0.2);
