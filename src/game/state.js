@@ -1,14 +1,17 @@
-// Campaign state (party, inventory, gold, progress) with localStorage save slots, plus user settings.
+// Campaign state (party, inventory, gold, progress) plus user settings. Save slots live in saves.js.
 import { heroRecord } from './unit.js';
 import { STARTING_PARTY, STARTING_GOLD, STARTING_ITEMS } from './data/chapters/index.js';
 import { HERO_ORDER } from './data/heroes.js';
 
-const SAVE_KEY = 'emberwing.save.v1';
 const SETTINGS_KEY = 'emberwing.settings.v1';
 
 export class GameState {
   constructor(data) {
     Object.assign(this, data);
+    this.stats = { kills: 0, turns: 0, battles: 0, playTime: 0, ...(this.stats || {}) };
+    this.flags = this.flags || {};
+    this.items = this.items || {};
+    this.weapons = this.weapons || [];
   }
 
   static fresh() {
@@ -16,36 +19,18 @@ export class GameState {
     for (const id of STARTING_PARTY) party[id] = heroRecord(id);
     return new GameState({
       version: 1, chapter: 0, party, items: { ...STARTING_ITEMS }, weapons: [], gold: STARTING_GOLD,
-      flags: {}, stats: { kills: 0, turns: 0, battles: 0 }, savedAt: null,
+      flags: {}, stats: { kills: 0, turns: 0, battles: 0, playTime: 0 },
     });
   }
 
-  static hasSave() {
-    try { return !!localStorage.getItem(SAVE_KEY); } catch { return false; }
-  }
-
-  static load() {
-    try {
-      const d = JSON.parse(localStorage.getItem(SAVE_KEY));
-      return d && d.version === 1 ? new GameState(d) : null;
-    } catch { return null; }
-  }
-
-  static saveInfo() {
-    const s = GameState.load();
-    return s ? { chapter: s.chapter, savedAt: s.savedAt, gold: s.gold, party: Object.keys(s.party).length } : null;
-  }
+  /** Rebuild from a save's `campaign` object (deep-copied so the save stays untouched). */
+  static fromJSON(d) { return new GameState(JSON.parse(JSON.stringify(d))); }
 
   toJSON() {
     return {
       version: this.version, chapter: this.chapter, party: this.party, items: this.items, weapons: this.weapons,
-      gold: this.gold, flags: this.flags, stats: this.stats, savedAt: this.savedAt,
+      gold: this.gold, flags: this.flags, stats: this.stats,
     };
-  }
-
-  save() {
-    this.savedAt = Date.now();
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.toJSON())); return true; } catch { return false; }
   }
 
   snapshot() { return JSON.stringify(this.toJSON()); }

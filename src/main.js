@@ -1,6 +1,7 @@
 // Entry point: boots the engine, UI and audio, then runs title -> chapters -> camp -> ending.
 import './ui/styles.css';
 import './ui/styles2.css';
+import './ui/saves.css';
 import './ui/mobile.css';
 import { Engine } from './core/engine.js';
 import { audio } from './audio/audio.js';
@@ -10,7 +11,8 @@ import { Cinematic } from './game/cinematic.js';
 import { GameState, Settings } from './game/state.js';
 import { Battle } from './game/battle.js';
 import { CHAPTERS } from './game/data/chapters/index.js';
-import { showTitle, showGameOver, showCredits, openSettings, showLoading } from './ui/screens.js';
+import { writeSlot, makeSave, migrateLegacy } from './game/saves.js';
+import { showTitle, showGameOver, showCredits, openSettings, openSystemMenu, showLoading } from './ui/screens.js';
 import { showCamp } from './ui/camp.js';
 import { preloadCharacterAssets } from './gfx/characters.js';
 import { devParams, devState } from './game/devtools.js';
@@ -46,6 +48,7 @@ const game = {
   dialogue: null,
   cinematic: null,
   openSettings: () => openSettings(game),
+  openSystemMenu: (battle) => openSystemMenu(game, battle),
 };
 game.dialogue = new Dialogue(ui, audio, () => settings);
 game.cinematic = new Cinematic(engine, ui, audio, () => settings);
@@ -66,7 +69,7 @@ window.addEventListener('click', unlockAudio);
 engine.onContextLost = () => {
   const el = document.createElement('div');
   el.className = 'modal-back';
-  el.innerHTML = '<div class="modal panel ornate"><h2>Graphics reset</h2><p>Your device paused the 3D graphics to save memory. Progress is kept from your last camp save.</p><div class="actions"><button class="btn primary">Reload</button></div></div>';
+  el.innerHTML = '<div class="modal panel ornate"><h2>Graphics reset</h2><p>Your device paused the 3D graphics to save memory. Your game was autosaved after your last move — reload and choose Continue.</p><div class="actions"><button class="btn primary">Reload</button></div></div>';
   el.querySelector('button').onclick = () => location.reload();
   uiRoot.appendChild(el);
 };
@@ -89,6 +92,17 @@ engine.onContextLost = () => {
   });
 }
 
+// Play time (real seconds, paused while the tab is hidden) for save slots.
+{
+  let last = performance.now();
+  engine.onUpdate(() => {
+    const now = performance.now();
+    const d = Math.min(0.25, (now - last) / 1000);
+    last = now;
+    if (game.state && !document.hidden) game.state.stats.playTime = (game.state.stats.playTime || 0) + d;
+  });
+}
+
 let portraitTipShown = false;
 function maybePortraitTip() {
   if (!touch || portraitTipShown || window.innerWidth > window.innerHeight) return;
@@ -96,11 +110,38 @@ function maybePortraitTip() {
   setTimeout(() => ui.toast('Tip: turn your phone sideways for a wider battlefield', '📱'), 2500);
 }
 
-async function campaign() {
+/**
+ * Plays the campaign from game.state, or from `save` (a camp save, or a mid-battle save to resume).
+ * Loading another save from inside the game restarts this loop with it. Returns when it's time for the title screen.
+ */
+async function campaign(save = null) {
+  for (;;) {
+    const r = await playCampaign(save);
+    if (r && r.action === 'load' && r.save) { save = r.save; continue; }
+    return;
+  }
+}
+
+async function playCampaign(save) {
+  let resume = null;
+  if (save) {
+    game.state = GameState.fromJSON(save.campaign);
+    resume = save.battle || null;
+    if (!resume && game.state.chapter >= CHAPTERS.length) {
+      await engine.fade(0, 0.3);
+      await showCredits(game);
+      return { action: 'title' };
+    }
+    if (!resume && game.state.chapter > 0) {
+      const r = await showCamp(game);
+      if (r) return r;
+    }
+  }
   while (game.state.chapter < CHAPTERS.length) {
-    const idx = game.state.chapter;
-    const snap = game.state.snapshot();
-    const battle = new Battle(game, CHAPTERS[idx], idx);
+    const idx = resume ? resume.chapterIndex : game.state.chapter;
+    const startSnap = (resume && resume.startSnapshot) || game.state.snapshot();
+    const battle = new Battle(game, CHAPTERS[idx], idx, { resume, startSnap });
+    resume = null;
     game.battle = battle;
     maybePortraitTip();
     let result;
@@ -112,27 +153,38 @@ async function campaign() {
     }
     await engine.fade(1, 0.6);
     battle.dispose();
+    game.battle = null;
     ui.showHud(false);
+    if (result === 'load') { const s = game.pendingLoad; game.pendingLoad = null; return { action: 'load', save: s }; }
+    if (result === 'title') return { action: 'title' };
     if (result === 'victory') {
       game.state.chapter++;
       game.state.stats.battles++;
-      game.state.save();
+      writeSlot('auto', makeSave(game));
       if (game.state.chapter >= CHAPTERS.length) {
         await engine.fade(0, 0.3);
         await showCredits(game);
-        return;
+        return { action: 'title' };
       }
-      if (!game.dev?.chapter || new URLSearchParams(location.search).get('camp') === '1') await showCamp(game);
+      if (!game.dev?.chapter || new URLSearchParams(location.search).get('camp') === '1') {
+        const r = await showCamp(game);
+        if (r) return r;
+      }
     } else {
       await engine.fade(0, 0.3);
-      const choice = await showGameOver(game);
-      game.state.restore(snap);
-      if (choice === 'title') return;
+      const choice = await showGameOver(game, { turnSave: battle.turnStartSave });
+      if (choice && choice.action === 'load') return choice;
+      if (choice === 'title') return { action: 'title' };
+      const playTime = game.state.stats.playTime;
+      game.state.restore(startSnap);
+      game.state.stats.playTime = playTime;
     }
   }
+  return { action: 'title' };
 }
 
 async function main() {
+  migrateLegacy();
   engine.fade(1, 0);
   engine.start();
   loading.progress(0.3);
@@ -160,9 +212,11 @@ async function main() {
     return;
   }
   for (;;) {
-    const choice = await showTitle(game);
-    game.state = choice === 'continue' ? (GameState.load() || GameState.fresh()) : GameState.fresh();
-    await campaign();
+    const pick = await showTitle(game);
+    if (pick.action === 'load') await campaign(pick.save);
+    else { game.state = GameState.fresh(); await campaign(); }
+    game.state = null;
+    game.battle = null;
     await engine.fade(1, 0.5);
   }
 }

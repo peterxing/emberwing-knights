@@ -165,7 +165,7 @@ export const actions = {
     else if (tg.kind === 'talk') await this.doTalk(u, t);
     if (this.over) return;
     if (u.alive) await this.commit(u);
-    else { this.sel = null; this.mode = 'idle'; this.maybeAutoEnd(); }
+    else { this.sel = null; this.mode = 'idle'; this.autosave(); this.maybeAutoEnd(); }
   },
 
   async commit(u) {
@@ -188,13 +188,19 @@ export const actions = {
     this.refreshDanger();
     this.mode = 'idle';
     this.game.ui.showUnit(null);
+    this.autosave();
     this.maybeAutoEnd();
   },
 
   maybeAutoEnd() {
     if (this.over || this.phase !== 'player') return;
     const left = this.board.alive.filter((p) => p.side === 'player' && !p.acted);
-    if (!left.length && this.game.settings.autoEnd) setTimeout(() => this.endPlayerPhase(), 350);
+    if (!left.length && this.game.settings.autoEnd) {
+      setTimeout(() => {
+        if (this.sysMenuOpen) { this._autoEndPending = true; return; }
+        this.endPlayerPhase();
+      }, 350);
+    }
   },
 
   // ------------------------------------------------------------------ combat

@@ -40,7 +40,9 @@ Fenn (Archer → Ranger) · Vex (Rogue → Shadowblade, recruitable) · Mira (Ma
   counter-attacks, critical hits, bows effective against flyers, holy magic effective against the undead,
   area spells, healing, villages, chests and **hidden treasure** (Vex can sense it).
 - **Growth:** EXP and randomised level-ups, automatic **class change at level 10** with a unique weapon per hero,
-  stat seeds, a shop and equipment at camp between chapters, autosave.
+  stat seeds, a shop and equipment at camp between chapters.
+- **Save anywhere on your turn:** autosave after every move, three save slots, mid-battle saves that resume exactly
+  where you left off, and save files you can export and import across devices.
 - **FD2-style battle cutscenes:** every fight cuts to a side-view stage themed to the terrain (fields, forests, castle
   halls, deserts, bridges, golden temples), with choreographed camera moves, hit-stop, spell effects and HP panels.
   Prefer speed? Switch to quick on-map animations in Settings.
@@ -60,8 +62,22 @@ Fenn (Archer → Ranger) · Vex (Rogue → Shadowblade, recruitable) · Mira (Ma
 | Zoom | Wheel / pinch | + / − |
 | Next ready unit | — | Tab |
 | Enemy danger zone | **Danger** button | R |
+| Menu (save / load / settings) | **☰** button | Esc (when nothing is selected) |
 
 Tip: clicking an enemy inside your red range moves you to the best tile and opens the battle forecast.
+
+### Saving
+
+- **Autosave** happens at the start of every player turn, after every unit's move and at camp. **Continue** on the
+  title screen picks up the newest save — mid-battle saves resume on the same turn with every unit where you left it.
+- **☰ Menu → Save Game** (or **Save & Load** at camp) writes to one of **three slots**. You can save any time it's your
+  turn and no unit is mid-order. **Load Game** is available from the title, the ☰ menu, camp and the defeat screen.
+- After a defeat you can **Retry from Turn N** (the start of that turn), retry the whole chapter, or load any save.
+- **Export to file** downloads a `.json` save; **Import file…** in Load Game reads it back — handy for moving between
+  a computer and a phone, or as a backup.
+- Saves live in your browser's local storage for this site. Clearing site data removes them, and private/incognito
+  windows forget them when closed; Safari may also clear storage for sites you haven't opened in a few weeks unless the
+  game is added to your Home Screen. Export a file if you want a permanent copy.
 
 ### Playing on a phone or tablet
 
@@ -92,11 +108,11 @@ src/
   core/      engine (renderer + post-processing), camera rig, input, tweens
   gfx/       toon shading, world/terrain builder, sky & lighting, cutscene arenas,
              characters & monsters, VFX, SVG portraits, map overlays
-  game/      rules (board, combat, AI), battle controller & scripting, cutscenes, save state
+  game/      rules (board, combat, AI), battle controller & scripting, cutscenes, campaign state, save slots
   game/data  classes, items, spells, heroes, cast appearances, terrain, the six chapters
   audio/     Web Audio sequencer, instruments, compositions and sound effects
-  ui/        HUD, dialogue, title, camp, settings
-tools/       chapter validator, balance simulator, headless screenshot/e2e scripts
+  ui/        HUD, dialogue, title, camp, settings, save/load screens
+tools/       chapter validator, balance simulator, headless screenshot, e2e, mobile and save tests
 ```
 
 Deployed automatically to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`.

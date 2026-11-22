@@ -80,12 +80,23 @@ export class UI {
       try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { /* not allowed */ }
     };
     if (!document.fullscreenEnabled) this.btnFs.classList.add('hidden');
-    this.btnSettings = h('button', 'btn small', '⚙');
-    this.btnSettings.title = 'Settings';
-    this.tr.append(this.btnCancel, this.goldChip, this.btnDanger, this.btnEnd, this.btnFs, this.btnSettings);
+    this.btnMenu = h('button', 'btn small menu-btn', '☰');
+    this.btnMenu.title = 'Menu — save, load, settings (Esc)';
+    this.btnMenu.setAttribute('aria-label', 'Menu');
+    this.tr.append(this.btnCancel, this.goldChip, this.btnDanger, this.btnEnd, this.btnFs, this.btnMenu);
+    this.saveIcon = h('span', 'save-blip', '✓ Saved');
+    this.tl.querySelector('.row').appendChild(this.saveIcon);
     this.unitCard = h('div', 'unit-card panel ornate off');
     this.terrainCard = h('div', 'terrain-card panel hidden');
     this.hud.append(this.tl, this.tr, this.unitCard, this.terrainCard);
+  }
+
+  /** Brief "Saved" indicator after an autosave. */
+  saveBlip() {
+    const el = this.saveIcon;
+    el.classList.remove('on');
+    void el.offsetWidth;
+    el.classList.add('on');
   }
 
   showHud(on) { this.hud.classList.toggle('hidden', !on); }

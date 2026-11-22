@@ -8,18 +8,25 @@ import { UnitView } from '../gfx/unitview.js';
 import { CameraRig } from '../core/camera.js';
 import { MapInput } from '../core/input.js';
 import { Board } from './board.js';
-import { makeEnemy, unitFromRecord } from './unit.js';
+import { Unit, makeEnemy, unitFromRecord } from './unit.js';
 import { decide } from './ai.js';
 import { SPELLS } from './data/spells.js';
 import { runScript, triggerEvents, freeTileNear, talkTargets as talkTargetsFor } from './battle-script.js';
 import { actions } from './battle-actions.js';
+import { writeSlot, makeSave } from './saves.js';
 import { RNG, key, manhattan, wait } from '../core/util.js';
 
 export class Battle {
-  constructor(game, chapter, index) {
+  /**
+   * opts.resume    : Battle#serialize() data to continue a saved battle
+   * opts.startSnap : campaign snapshot taken when the chapter began (used for "Retry Chapter")
+   */
+  constructor(game, chapter, index, opts = {}) {
     this.game = game;
     this.ch = chapter;
     this.index = index;
+    this.resumeData = opts.resume ? JSON.parse(JSON.stringify(opts.resume)) : null;
+    this.startSnap = opts.startSnap || (this.resumeData && this.resumeData.startSnapshot) || game.state.snapshot();
     this.rng = new RNG((Date.now() ^ (index * 7919)) >>> 0);
     this.over = false;
     this.result = null;
@@ -64,35 +71,51 @@ export class Battle {
     engine.setGrade(this.env.preset || {});
     engine.setTiltShift({ enabled: settings.quality !== 'low', focusY: 0.5, range: 0.17, blur: 2.4, falloff: 0.32 });
 
-    // units: chapter joins, party, enemies
-    for (const j of ch.joins || []) state.addHero(j.id);
-    const placed = new Set();
-    for (const j of ch.joins || []) {
-      const u = unitFromRecord(state.party[j.id], j.x, j.y);
-      this.board.addUnit(u);
-      placed.add(j.id);
+    // units: restore a saved battle, or deploy joins, party and enemies
+    const R = this.resumeData;
+    if (R) {
+      for (const o of R.units) this.board.addUnit(Unit.fromSave(o));
+      this.turn = R.turn || 1;
+      this.fired = new Set(R.fired || []);
+      this.onceLines = new Set(R.onceLines || []);
+      this.visited = new Set(R.visited || []);
+      this.opened = new Set(R.opened || []);
+      this.found = new Set(R.found || []);
+      this.bossSeen = new Set(R.bossSeen || []);
+      if (R.objective) this.objective = { ...R.objective };
+      this.turnStartSave = R.turnStart || null;
+      for (const k of this.opened) { const [x, y] = k.split(',').map(Number); this.world.setChestOpen?.(x, y, true); }
+      for (const k of this.visited) { const [x, y] = k.split(',').map(Number); this.world.setVillageVisited?.(x, y); }
+    } else {
+      for (const j of ch.joins || []) state.addHero(j.id);
+      const placed = new Set();
+      for (const j of ch.joins || []) {
+        const u = unitFromRecord(state.party[j.id], j.x, j.y);
+        this.board.addUnit(u);
+        placed.add(j.id);
+      }
+      const starts = [...ch.starts];
+      for (const id of state.roster) {
+        if (placed.has(id)) continue;
+        const s = starts.shift();
+        if (!s) break;
+        this.board.addUnit(unitFromRecord(state.party[id], s[0], s[1]));
+      }
+      for (const e of ch.enemies) {
+        if (e.hero && state.party[e.hero]) continue;
+        const u = makeEnemy(e);
+        const t = freeTileNear(this, u, u.x, u.y);
+        if (t) { u.x = t.x; u.y = t.y; }
+        this.board.addUnit(u);
+      }
     }
-    const starts = [...ch.starts];
-    for (const id of state.roster) {
-      if (placed.has(id)) continue;
-      const s = starts.shift();
-      if (!s) break;
-      this.board.addUnit(unitFromRecord(state.party[id], s[0], s[1]));
-    }
-    for (const e of ch.enemies) {
-      if (e.hero && state.party[e.hero]) continue;
-      const u = makeEnemy(e);
-      const t = freeTileNear(this, u, u.x, u.y);
-      if (t) { u.x = t.x; u.y = t.y; }
-      this.board.addUnit(u);
-    }
-    for (const u of this.board.units) this.addView(u);
+    for (const u of this.board.units) if (u.alive) { const v = this.addView(u); if (u.acted && u.side === 'player') v.setGreyed(true); }
     for (const u of this.board.units) if (u.side === 'player' && u.id !== 'kael') this.game.dialogue.promoted.delete(u.id);
     for (const u of this.board.units) if (u.promoted) this.game.dialogue.promoted.add(u.id);
 
     if (this.mapDef.ambient) this.ambient = this.vfx.ambient(this.mapDef.ambient, this.world.bounds, { density: settings.quality === 'low' ? 0.5 : 1 });
 
-    const kael = this.board.units.find((u) => u.id === 'kael') || this.board.units[0];
+    const kael = this.board.units.find((u) => u.id === 'kael' && u.alive) || this.board.units.find((u) => u.alive) || this.board.units[0];
     this.rig.focus(this.world.tileCenter(kael.x, kael.y), { dist: 21, yaw: Math.PI / 4, pitch: 0.92, instant: true });
     try { this.vfx.precompile?.(engine.renderer, this.camera); await engine.renderer.compileAsync(this.scene, this.camera); } catch (e) { /* older drivers: compile lazily */ }
     if (settings.anim === 'full') await this.game.cinematic.prewarm(this.board.tchar(kael.x, kael.y), this.mapDef.environment, this.mapDef.palette);
@@ -108,11 +131,11 @@ export class Battle {
     ui.setChapter(ch.num, ch.title);
     ui.setObjective(this.objective.text);
     ui.setGold(state.gold);
-    ui.setTurn(1, 'player');
+    ui.setTurn(this.turn, 'player');
     ui.btnEnd.onclick = () => { if (this.phase === 'player' && (this.mode === 'idle' || this.mode === 'selected')) this.endPlayerPhase(); };
     ui.btnDanger.onclick = () => this.toggleDanger();
     ui.btnDanger.classList.toggle('toggled', this.dangerOn);
-    ui.btnSettings.onclick = () => this.game.openSettings();
+    ui.btnMenu.onclick = () => { this.game.audio.sfx('select'); this.openSystemMenu(); };
     ui.btnCancel.onclick = () => { this.game.audio.sfx('cancel'); this.onCancel(); };
     ui.setCancelVisible(false);
     this._cancelShown = false;
@@ -171,7 +194,8 @@ export class Battle {
     const { ui, engine, audio } = this.game;
     ui.showHud(false);
     await engine.fade(0, 0.8);
-    await runScript(this, this.ch.intro);
+    if (this.resumeData) this._resumeOnce = true;
+    else await runScript(this, this.ch.intro);
     const lead = this.board.units.find((u) => u.id === 'kael' && u.alive);
     if (lead) this.rig.focus(this.world.tileCenter(lead.x, lead.y), { dist: Math.max(this.rig.goalDist, window.innerWidth < window.innerHeight ? 27 : 19.5), pitch: 0.92 });
     ui.showHud(true);
@@ -196,13 +220,51 @@ export class Battle {
       ui.showHud(false);
       await runScript(this, this.ch.outro);
       this.persistParty();
-    } else {
+    } else if (this.result === 'defeat') {
       audio.playMusic('defeat', { fade: 0.3 });
       engine.setDesaturate(0.85);
       await ui.banner('DEFEAT', 'Kael has fallen', 'enemy');
       engine.setDesaturate(0);
     }
     return this.result;
+  }
+
+  // ------------------------------------------------------------------ saving
+  /** Everything needed to resume this battle exactly where it stands (plus the turn-start snapshot for "Retry from Turn"). */
+  serialize(withTurnStart = true) {
+    return {
+      chapterIndex: this.index,
+      turn: this.turn,
+      units: this.board.units.map((u) => u.toSave()),
+      fired: [...this.fired], onceLines: [...this.onceLines], visited: [...this.visited],
+      opened: [...this.opened], found: [...this.found], bossSeen: [...this.bossSeen],
+      objective: { ...this.objective },
+      startSnapshot: this.startSnap,
+      turnStart: withTurnStart ? this.turnStartSave || null : null,
+    };
+  }
+
+  /** Saving is allowed on the player's turn while no unit is mid-action. */
+  canSave() { return !this.over && !this.disposed && this.phase === 'player' && this.mode === 'idle'; }
+
+  /** Writes the autosave slot; returns the save (or null when saving isn't possible right now). */
+  autosave() {
+    if (!this.canSave()) return null;
+    const save = makeSave(this.game, this.serialize());
+    if (writeSlot('auto', save)) this.game.ui.saveBlip?.();
+    return save;
+  }
+
+  /** Leave the battle without a win/loss ('load' or 'title'). */
+  abort(result) { if (this.over) return; this.over = true; this.result = result; this._phaseResolve?.(); }
+
+  /** ☰ Menu: save, load, settings, quit. Any half-finished unit order is cancelled first. */
+  async openSystemMenu() {
+    if (this.sysMenuOpen || this.over || this.disposed) return;
+    for (let i = 0; i < 4 && ['selected', 'menu', 'target'].includes(this.mode); i++) this.onCancel();
+    this.sysMenuOpen = true;
+    try { await this.game.openSystemMenu?.(this); } finally { this.sysMenuOpen = false; }
+    if (this._autoEndPending) { this._autoEndPending = false; if (!this.over) this.maybeAutoEnd(); }
   }
 
   persistParty() {
@@ -255,13 +317,23 @@ export class Battle {
     this.mode = 'busy';
     ui.setTurn(this.turn, 'player');
     audio.playMusic(this.musicFor('player'), { fade: 0.8 });
-    await ui.banner('PLAYER PHASE', `Turn ${this.turn}`, 'player');
-    await triggerEvents(this, { type: 'phase', turn: this.turn, phase: 'player' });
-    if (this.checkEnd()) return;
-    this.phaseStart('player');
+    const resumed = this._resumeOnce;
+    if (resumed) {
+      // continuing a saved battle: the phase already started before the save
+      this._resumeOnce = false;
+      await ui.banner('BATTLE RESUMED', `Turn ${this.turn}`, 'player');
+      if (this.checkEnd()) return;
+    } else {
+      await ui.banner('PLAYER PHASE', `Turn ${this.turn}`, 'player');
+      await triggerEvents(this, { type: 'phase', turn: this.turn, phase: 'player' });
+      if (this.checkEnd()) return;
+      this.phaseStart('player');
+    }
     this.refreshDanger();
     this.mode = 'idle';
     this.input.enabled = true;
+    if (!resumed || !this.turnStartSave) this.turnStartSave = makeSave(this.game, this.serialize(false));
+    this.autosave();
     if (this.game.auto) {
       await this.autoPlayerPhase();
       this.deselect();
@@ -269,7 +341,8 @@ export class Battle {
       return;
     }
     const first = this.nextReady();
-    if (first && this.turn > 1) this.rig.focus(this.world.tileCenter(first.x, first.y));
+    if (first && (this.turn > 1 || resumed)) this.rig.focus(this.world.tileCenter(first.x, first.y));
+    if (resumed) this.maybeAutoEnd();
     await new Promise((r) => { this._phaseResolve = r; });
     this._phaseResolve = null;
     this.deselect();
@@ -493,7 +566,8 @@ export class Battle {
 
   onKey(e) {
     const k = e.key;
-    if (this.mode === 'busy' || this.phase !== 'player') return;
+    if (this.sysMenuOpen || this.mode === 'busy' || this.phase !== 'player') return;
+    if (k === 'Escape' && this.mode === 'idle' && !e.repeat) { this.openSystemMenu(); return; }
     if (k === 'Escape' || k === 'Backspace') { this.onCancel(); return; }
     if (k.toLowerCase() === 'r' && !e.repeat) this.toggleDanger();
     if (k === 'Tab') {

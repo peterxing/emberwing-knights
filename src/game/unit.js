@@ -84,6 +84,25 @@ export class Unit {
       weapon: this.weapon, promoted: this.promoted, lookId: this.lookId,
     };
   }
+
+  /** Full mid-battle snapshot of this unit (for save slots). */
+  toSave() {
+    return {
+      id: this.id, name: this.name, side: this.side, cls: this.cls, level: this.level, exp: this.exp,
+      stats: { ...this.stats }, hp: this.hp, mp: this.mp, weapon: this.weapon, lookId: this.lookId,
+      promoted: this.promoted, boss: this.boss, lord: this.lord, ai: this.ai, aiData: { ...this.aiData },
+      x: this.x, y: this.y, acted: this.acted, moved: this.moved, alive: this.alive, drops: this.drops,
+      gold: this.gold, recruit: this.recruit, extraSpells: [...this.extraSpells], isHero: this.isHero,
+    };
+  }
+
+  static fromSave(o) {
+    const u = new Unit(o);
+    u.acted = !!o.acted;
+    u.moved = !!o.moved;
+    u.alive = o.alive !== false;
+    return u;
+  }
 }
 
 /** Default record for a hero joining the party. */
@@ -137,7 +156,7 @@ export function makeEnemy(e) {
     id: e.id || e.cast || `${e.type || cls}_${e.x}_${e.y}`,
     name, side: e.side || 'enemy', cls, level, stats,
     weapon: e.weapon || tpl?.weapon || 'ironAxe', lookId, boss: !!e.boss, promoted: !!e.promoted,
-    ai: e.ai || (e.boss ? 'boss' : 'aggressive'), aiData: e.aiData || {}, x: e.x, y: e.y,
+    ai: e.ai || (e.boss ? 'boss' : 'aggressive'), aiData: { ...(e.aiData || {}) }, x: e.x, y: e.y,
     drops: e.drops || null, gold: e.gold ?? Math.round(30 + level * 12 + (e.boss ? 400 : 0)),
     recruit: e.recruit || null, extraSpells: e.spells || [],
     isHero: !!e.hero,

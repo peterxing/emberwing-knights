@@ -1,0 +1,84 @@
+/* ================================================================ Save / load UI
+   Slot picker, in-battle menu, camp save tab, autosave blip. Loaded before mobile.css.
+   ================================================================================ */
+
+.title-menu .tm .tm-sub { display: block; font-family: var(--font-body); font-size: 11.5px; font-weight: 800; letter-spacing: 0.14em; color: var(--gold); margin-top: 1px; text-transform: uppercase; }
+
+.save-blip { margin-left: auto; font-size: 11px; font-weight: 800; color: #7dffb0; letter-spacing: 0.04em; opacity: 0; white-space: nowrap; }
+.save-blip.on { animation: saveBlip 1.6s ease-out; }
+@keyframes saveBlip { 0% { opacity: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+.menu-btn { font-size: 15px; line-height: 1; min-width: 34px; }
+
+.modal-back.dim > .modal { filter: brightness(0.6); }
+
+/* ---------------------------------------------------------------- slot picker */
+.slot-modal { width: min(620px, 94vw); }
+.slot-list { display: grid; gap: 8px; }
+.slot { display: grid; grid-template-columns: 96px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(233, 198, 111, 0.28); transition: background 0.15s, border-color 0.15s, transform 0.15s; pointer-events: auto; }
+.slot:hover { background: rgba(233, 198, 111, 0.12); border-color: var(--gold); }
+.slot:active { transform: scale(0.99); }
+.slot.empty { border-style: dashed; }
+.slot.empty .slot-info b { color: var(--muted); font-weight: 700; }
+.slot.locked { cursor: default; opacity: 0.75; }
+.slot.locked:hover { background: rgba(255, 255, 255, 0.035); border-color: rgba(233, 198, 111, 0.28); }
+.slot.just-saved { animation: justSaved 1.2s ease-out; }
+@keyframes justSaved { 0% { box-shadow: 0 0 0 0 rgba(125, 255, 176, 0.8); border-color: #7dffb0; } 100% { box-shadow: 0 0 0 14px rgba(125, 255, 176, 0); } }
+.slot-name { font-family: var(--font-title); font-weight: 900; color: var(--gold-hi); letter-spacing: 0.08em; font-size: 14px; }
+.slot-name small { display: block; font-family: var(--font-body); font-weight: 700; font-size: 10.5px; letter-spacing: 0.02em; color: var(--muted); margin-top: 2px; }
+.slot-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.slot-info b { font-family: var(--font-title); font-size: 15px; color: var(--text); }
+.slot-info span { font-size: 12px; color: var(--muted); }
+.slot-info .when { color: #9fd9ff; }
+.slot-tools { display: flex; gap: 6px; }
+.slot-tools .btn { min-width: 36px; }
+.slot-warn { color: #ffb0a8; font-size: 13px; margin: -4px 0 10px; }
+.slot-hint { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+.modal .actions .grow { flex: 1; }
+
+/* ---------------------------------------------------------------- in-battle menu */
+.sys-menu { width: min(380px, 92vw); }
+.sys-menu h2 { margin-bottom: 4px; }
+.sys-sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+.sys-list { display: grid; gap: 8px; }
+.sys-list .btn { width: 100%; text-align: left; padding: 11px 16px; font-size: 14px; }
+.sys-note { color: var(--muted); font-size: 12px; margin: 12px 0 0; }
+
+/* ---------------------------------------------------------------- camp save tab & defeat screen */
+.camp-save { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.camp-save .btn { padding: 11px 12px; }
+.camp-save-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0; }
+.end-screen .row { flex-wrap: wrap; justify-content: center; padding: 0 12px; }
+
+html.touch .slot-tools .btn { min-width: 42px; }
+@media (hover: none) {
+  .slot:hover { background: rgba(255, 255, 255, 0.035); border-color: rgba(233, 198, 111, 0.28); }
+  .slot:active { background: rgba(233, 198, 111, 0.14); }
+}
+
+@media (max-width: 600px) {
+  .slot { grid-template-columns: 1fr auto; gap: 4px 10px; padding: 9px 10px; }
+  .slot-name { grid-column: 1; font-size: 13px; }
+  .slot-name small { display: inline; margin-left: 6px; }
+  .slot-info { grid-column: 1 / -1; grid-row: 2; }
+  .slot-tools { grid-column: 2; grid-row: 1; }
+  .slot-info b { font-size: 14px; }
+  .slot-info span { font-size: 11.5px; }
+  .camp-save { grid-template-columns: 1fr; }
+  .end-screen .row .btn { flex: 1 1 40%; }
+}
+
+@media (max-height: 500px) {
+  .slot-list { gap: 6px; }
+  .slot { grid-template-columns: 82px 1fr auto; padding: 6px 10px; gap: 10px; }
+  .slot-name { font-size: 12.5px; }
+  .slot-info b { font-size: 13.5px; }
+  .slot-info span { font-size: 11px; }
+  .slot-hint { display: none; }
+  .sys-sub { margin-bottom: 8px; }
+  .sys-list { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sys-list .btn { padding: 8px 12px; font-size: 13px; }
+  .sys-menu { width: min(460px, 92vw); }
+  .end-screen .row { margin-top: 12px; }
+}

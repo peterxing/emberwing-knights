@@ -8,6 +8,8 @@ import { CHAPTERS } from '../game/data/chapters/index.js';
 import { CLASSES, STAT_LABEL } from '../game/data/classes.js';
 import { WEAPONS, ITEMS, shopStock, itemInfo } from '../game/data/items.js';
 import { unitFromRecord } from '../game/unit.js';
+import { writeSlot, makeSave, exportSave } from '../game/saves.js';
+import { openSlotPicker, confirmBox } from './screens.js';
 
 class CampStage {
   constructor(game) {
@@ -71,12 +73,12 @@ function statsHtml(u) {
     <div><span>MOV</span><b>${u.mov}</b></div></div>`;
 }
 
-/** Runs the camp until the player marches on. */
+/** Runs the camp until the player marches on. Resolves to null, { action: 'title' } or { action: 'load', save }. */
 export async function showCamp(game) {
   const { ui, audio, engine, state } = game;
   const stage = new CampStage(game);
   audio.playMusic('camp', { fade: 1.2 });
-  state.save();
+  writeSlot('auto', makeSave(game));
   stage.update(0, 0);
   try { await engine.renderer.compileAsync(stage.scene, stage.camera); } catch (e) { /* compile lazily */ }
   await engine.fade(0, 0.8);
@@ -89,7 +91,7 @@ export async function showCamp(game) {
         <button class="btn" data-tab="party">Party &amp; Equipment</button>
         <button class="btn" data-tab="shop">Shop</button>
         <button class="btn" data-tab="items">Inventory</button>
-        <button class="btn" data-tab="save">Save Game</button>
+        <button class="btn" data-tab="save">Save &amp; Load</button>
       </div>
       <div style="flex:1"></div>
       <button class="btn primary" data-go>March On ▸</button></div>
@@ -185,18 +187,45 @@ export async function showCamp(game) {
       main.insertAdjacentHTML('beforeend', '<p style="color:var(--muted);font-size:13px;margin-top:14px">Stat seeds and potions are used from the Item command during battle.</p>');
     },
     save() {
-      const ok = state.save();
-      audio.sfx(ok ? 'confirm' : 'error');
-      main.innerHTML = `<h3>Save</h3><p>${ok ? 'Progress saved. Choose <b>Continue</b> on the title screen to resume from this camp.' : 'Saving failed (storage unavailable).'}</p>`;
+      main.innerHTML = `<h3>Save &amp; Load</h3>
+        <p class="desc camp-save-note">Progress is autosaved here at camp and after every move in battle. Use the three save slots to keep extra copies, or export a file to move your game to another device.</p>
+        <div class="camp-save">
+          <button class="btn primary" data-s="save">💾 Save to a slot…</button>
+          <button class="btn" data-s="export">⤓ Export to file</button>
+          <button class="btn" data-s="load">📂 Load a save…</button>
+          <button class="btn" data-s="title">⌂ Return to Title</button>
+        </div>`;
+      main.querySelector('.camp-save').addEventListener('click', async (e) => {
+        const b = e.target.closest('button[data-s]');
+        if (!b || busy) return;
+        audio.sfx('select');
+        busy = true;
+        try {
+          const s = b.dataset.s;
+          if (s === 'save') await openSlotPicker(game, { mode: 'save', make: () => makeSave(game) });
+          else if (s === 'export') { const name = exportSave(makeSave(game)); audio.sfx('confirm'); ui.toast(`Exported ${name}`, '⤓'); }
+          else if (s === 'load') {
+            const save = await openSlotPicker(game, { mode: 'load', warn: true });
+            if (save) finish({ action: 'load', save });
+          } else if (s === 'title' && await confirmBox(game, 'Return to the title screen? Your camp is autosaved — choose Continue to come back.', { title: 'Return to title', ok: 'Return' })) {
+            finish({ action: 'title' });
+          }
+        } finally { busy = false; }
+      });
     },
   };
 
+  let busy = false;
+  let finish;
+  const done = new Promise((r) => { finish = r; });
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { audio.sfx('select'); tabs[b.dataset.tab](); }));
   tabs.party();
-  await new Promise((r) => el.querySelector('[data-go]').addEventListener('click', r, { once: true }));
+  el.querySelector('[data-go]').addEventListener('click', () => { if (!busy) finish(null); });
+  const result = await done;
   audio.sfx('confirm');
-  state.save();
+  writeSlot('auto', makeSave(game));
   await engine.fade(1, 0.7);
   el.remove();
   stage.dispose();
+  return result;
 }
