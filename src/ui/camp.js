@@ -72,6 +72,8 @@ export async function showCamp(game) {
   const stage = new CampStage(game);
   audio.playMusic('camp', { fade: 1.2 });
   state.save();
+  stage.update(0, 0);
+  try { await engine.renderer.compileAsync(stage.scene, stage.camera); } catch (e) { /* compile lazily */ }
   await engine.fade(0, 0.8);
   const next = CHAPTERS[state.chapter];
   const el = h('div', 'screen camp');

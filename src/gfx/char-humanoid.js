@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { shade } from './toon.js';
 import { editFaceNormals } from './char-faces.js';
 import {
-  RigDef, Assembler, prim, cachedGeo, sweepGeo, stripGeo, chainWeightsY, chainWeightsAxis, makeRng, hashStr, D2R, clamp, lerp, ik2,
+  RigDef, Assembler, prim, cachedGeo, sweepGeo, stripGeo, chainWeightsAxis, makeRng, hashStr, D2R, clamp, lerp, ik2,
 } from './char-anim.js';
 
 const TEAM_ACCENT = { player: 0x3d8bff, enemy: 0xff4a3d, ally: 0x4ee08a, neutral: 0xe8d36a };
@@ -752,8 +752,9 @@ export function addHair(B, A) {
     }
     case 'bald': {
       if (!f.hideBack) {
-        ring(70, 290, 9, 92, 0.09, { bend: -0.1, lift: 16, w: 0.08, jitter: 14 });
-        A.add(prim.sphereCut(s(18), s(10), 0, Math.PI * 2, 0, 1.6), { bone: 'head', at: [0, d.headY, 0], scl: [d.headR * 1.006, d.headR * d.headS[1] * 1.006, d.headR * d.headS[2] * 1.006], color: shade(look.skin, 0.08), ol: 0 });
+        for (let i = 0; i < 11; i++) {
+          A.add(hangLockGeo(d, 75 + i * 21, 74, 0.14, 0.085, 0.03, { elEnd: 114, flare: 0.0, q: B.q }), { bone: 'head', color: tipCol, ol: 0.8 });
+        }
       }
       break;
     }
@@ -916,6 +917,7 @@ export function addHeadgear(B, A, sp) {
 }
 
 // ------------------------------------------------------------------ facial geometry
+/** Beards, moustaches, masks and eyepatch straps (painted marks live on the face texture). */
 export function addFacial(B, A) {
   const look = B.look, d = B.d, fac = look.facial || [], s = (n) => B.seg(n);
   const hy = d.headY, R = d.headR;
@@ -953,8 +955,8 @@ export function addFacial(B, A) {
   }
 }
 
-// <<<HUM-PARTS-2>>>
 // ------------------------------------------------------------------ cape + scarf
+/** Two-tone cape skinned to the cape chain, and a scarf with fluttering tails on the scarf chain. */
 export function addCapeScarf(B, A, sp) {
   const d = B.d, o = B.o, R = A.def;
   if (o.cape) {
@@ -1200,11 +1202,11 @@ function addShield(B, A) {
   }
 }
 
-// <<<HUM-PARTS-3>>>
 // ------------------------------------------------------------------ animation
 // Leg IK: clips store foot targets in footL/footR position channels and an IK weight (degrees ->
 // read back as 1.0) in the foot Y-rotation channel; this post-process converts them into leg angles.
 const _ik = [0, 0];
+/** Post-process for blended humanoid poses: head stabilisation and foot-planting leg IK. */
 export function humanoidPost(def, d) {
   const ih = def.idx('hips'), isp = def.idx('spine'), ich = def.idx('chest'), ihd = def.idx('head');
   const legs = [['thighL', 'shinL', 'footL'], ['thighR', 'shinR', 'footR']].map((n) => n.map((x) => def.idx(x)));
@@ -1568,13 +1570,12 @@ export function humanoidClips(B, wpn, def) {
   };
   if (!clips.shoot) clips.shoot = st === 'staff' || st === 'rod' ? clips.cast : clips.attack;
   if (!clips.attack && clips.shoot) clips.attack = clips.shoot;
-  if (B.look.mount) mountify(clips, H, d);
+  if (B.look.mount) mountify(clips, H);
   return clips;
 }
 
 /** Seat a rider: keep upper-body animation, replace hips/legs with a straddling pose. */
-function mountify(clips, H, d) {
-  void d;
+function mountify(clips, H) {
   const SEAT = { hips: [-8, 0, 0], thighL: [-78, 0, 34], thighR: [-78, 0, -34], shinL: [84, 0, 0], shinR: [84, 0, 0], footL: [20, 0, 0], footR: [20, 0, 0] };
   const seatKey = (k) => {
     const p = { ...k.p, ...SEAT };
@@ -1595,9 +1596,6 @@ function mountify(clips, H, d) {
   clips.dead = { dur: 3, loop: true, keys: [K(0, 'io', P_(slump))] };
   clips.death = { dur: 1.0, impact: 0.7, expr: 'hurt', all: true, keys: [K(0, 'io', P_({ ...ride, spine: [-14, 0, 0], head: [-18, 0, 0] })), K(0.4, 'o', P_({ ...ride, spine: [30, 0, 4], head: [20, 0, 0] })), K(1.0, 'io', P_(slump))] };
 }
-
-// <<<HUM-CLIPS>>>
-// <<<HUM-PARTS>>>
 
 // ------------------------------------------------------------------ assembly
 /**
@@ -1640,4 +1638,3 @@ export function buildHumanoid(look, opts = {}) {
   };
 }
 
-// <<<HUM-MORE>>>

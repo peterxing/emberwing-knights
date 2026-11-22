@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { shade } from './toon.js';
 import { makeRng, hashStr } from './char-anim.js';
 
-// Decal coverage (degrees): phi spans the front of the head, theta runs from forehead to chin.
+/** Decal coverage in degrees (phi across the front of the head, theta from forehead to chin), canvas px/deg and radius. */
 export const FACE = { PHI_HALF: 72, THETA0: 50, THETA1: 146, PPD: 2.6, RADIUS: 1.012 };
 
 /** Partial-sphere geometry (unit head radius) whose UVs match the face canvas. */
@@ -56,6 +56,7 @@ const SHAPES = {
   cold: { w: 26, h: 21, tilt: 3, iris: 0.82, pupil: 0.55, lid: 0.22, lash: 1.0, brow: 6, slant: 0.15 },
 };
 
+/** Expression names accepted by Character.setExpression(). */
 export const EXPRESSIONS = ['neutral', 'angry', 'hurt', 'happy', 'closed'];
 
 /** Stable identity for the painted face of a look (characters with equal keys share textures). */

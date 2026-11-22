@@ -44,18 +44,18 @@ const DEFAULTS = {
 export const ENV_PRESETS = {
   dawn: {
     label: 'Dawn',
-    zenith: 0x4b5fb8, skyMid: 0xb88ac8, horizon: 0xffc09a, skyCurve: 0.45,
-    hazeColor: 0xffd8c0, haze: 0.5,
+    zenith: 0x4a62c0, skyMid: 0x9a8ad0, horizon: 0xffc890, skyCurve: 0.42,
+    hazeColor: 0xffd8c0, haze: 0.35,
     bodyAz: 160, bodyEl: 5, bodySize: 0.05, bodyColor: 0xfff0d0, bodyIntensity: 6, rays: 0.25,
     glowColor: 0xffc890, glow: 0.6, glowPow: 4, hGlowColor: 0xff9a6a, hGlow: 0.6,
     cloudCover: 0.58, cloudSoft: 0.07, cloudScale: 0.6, cloudSpeed: 0.006,
     cloudLit: 0xffd2c0, cloudShade: 0x8c7fb8, cloudUnder: 0xff9f8a, cloudRim: 0xfff0e0, cumulus: 0.6, cumulusHeight: 0.16,
     stars: 0.15,
     ridgeColor: 0xb89ab8, ridgeColor2: 0x8a76a8, ridgeHaze: 0.6,
-    sunAz: 60, sunEl: 26, sunColor: 0xffd8b0, sunIntensity: 2.2, shadowIntensity: 0.75, shadowRadius: 2,
+    sunAz: 60, sunEl: 26, sunColor: 0xffe0c4, sunIntensity: 2.25, shadowIntensity: 0.75, shadowRadius: 2,
     hemiSky: 0xa898e0, hemiGround: 0x9a7a6a, hemiIntensity: 1.45,
     fogColor: 0xf0c0b8, fogDensity: 0.014,
-    exposure: 1.02, bloomStrength: 0.45, bloomThreshold: 0.84, saturation: 1.08, contrast: 1.02, vignette: 0.25, tint: [1.03, 0.98, 1.0],
+    exposure: 1.02, bloomStrength: 0.45, bloomThreshold: 0.84, saturation: 1.08, contrast: 1.02, vignette: 0.25, tint: [1.02, 0.99, 1.0],
     cloudShadow: 0.15,
     particleColor: 0xffd8b0, particles: 0.3,
   },
@@ -71,10 +71,10 @@ export const ENV_PRESETS = {
     cloudCover: 0.55, cloudLit: 0xffc070, cloudShade: 0x4a2c6a, cloudUnder: 0xff8a50, cloudRim: 0xffe8b0, cumulus: 0.8, cumulusHeight: 0.2,
     stars: 0.05,
     ridgeColor: 0x8a4a6a, ridgeColor2: 0x5a3050, ridgeHaze: 0.5,
-    sunAz: -60, sunEl: 21, sunColor: 0xffb070, sunIntensity: 2.5, shadowIntensity: 0.85,
-    hemiSky: 0x8a6ab8, hemiGround: 0x8a5a3a, hemiIntensity: 1.35,
+    sunAz: -60, sunEl: 21, sunColor: 0xffc088, sunIntensity: 2.4, shadowIntensity: 0.85,
+    hemiSky: 0x7a6ac0, hemiGround: 0x7a5a4a, hemiIntensity: 1.35,
     fogColor: 0xf0a070, fogDensity: 0.012,
-    exposure: 1, bloomStrength: 0.55, bloomThreshold: 0.82, saturation: 1.15, contrast: 1.08, vignette: 0.3, tint: [1.05, 0.98, 0.92],
+    exposure: 1, bloomStrength: 0.55, bloomThreshold: 0.82, saturation: 1.08, contrast: 1.08, vignette: 0.3, tint: [1.03, 0.99, 0.95],
     cloudShadow: 0.2,
     particleColor: 0xffc070, particles: 0.35,
   },
@@ -82,14 +82,14 @@ export const ENV_PRESETS = {
     label: 'Night',
     zenith: 0x050b24, skyMid: 0x0f2350, horizon: 0x24426e, skyCurve: 0.6,
     hazeColor: 0x2c4a78, haze: 0.4,
-    bodyAz: 200, bodyEl: 18, bodySize: 0.055, bodyColor: 0xe8f0ff, bodyIntensity: 3, moon: 1,
+    bodyAz: 200, bodyEl: 11, bodySize: 0.055, bodyColor: 0xe8f0ff, bodyIntensity: 3, moon: 1,
     glowColor: 0x8fb0ff, glow: 0.35, glowPow: 12,
-    cloudCover: 0.6, cloudLit: 0x8094c0, cloudShade: 0x1a2850, cloudUnder: 0x2a3a66, cloudRim: 0xc8d8ff, cloudOpacity: 0.9,
+    cloudCover: 0.6, cloudLit: 0x8c9cc8, cloudShade: 0x121c3e, cloudUnder: 0x1a2448, cloudRim: 0xc8d8ff, cloudOpacity: 0.9,
     cumulus: 0.5, cumulusHeight: 0.15,
     stars: 1, milkyWay: 0.6,
     ridgeColor: 0x14244a, ridgeColor2: 0x0c1834, ridgeHaze: 0.4,
-    sunAz: -35, sunEl: 42, sunColor: 0x9cb8ff, sunIntensity: 2.0, shadowIntensity: 0.75,
-    hemiSky: 0x4a6ab0, hemiGround: 0x2a2a40, hemiIntensity: 1.3,
+    sunAz: -35, sunEl: 42, sunColor: 0xb0c4f4, sunIntensity: 2.0, shadowIntensity: 0.75,
+    hemiSky: 0x5670ac, hemiGround: 0x2a2a40, hemiIntensity: 1.3,
     fogColor: 0x1a2c50, fogDensity: 0.012,
     exposure: 1.1, bloomStrength: 0.6, bloomThreshold: 0.78, saturation: 1, contrast: 1.06, vignette: 0.32, tint: [0.94, 0.98, 1.08],
     cloudShadow: 0,
@@ -101,7 +101,7 @@ export const ENV_PRESETS = {
     hazeColor: 0xfff0d4, haze: 0.45,
     bodyAz: 165, bodyEl: 55, bodySize: 0.045, bodyColor: 0xffffff, bodyIntensity: 9,
     glowColor: 0xfff4d8, glow: 0.6, glowPow: 3,
-    cloudCover: 0.6, cirrus: 0.8, cloudLit: 0xffffff, cloudShade: 0xc8d0e0, cumulus: 0.2, cumulusHeight: 0.12,
+    cloudCover: 0.52, cirrus: 0.8, cloudLit: 0xffffff, cloudShade: 0xc8d0e0, cumulus: 0.2, cumulusHeight: 0.12,
     ridgeColor: 0xd8b890, ridgeColor2: 0xc49a70, ridgeHeight: 0.04, ridgeHeight2: 0.025, ridgeHaze: 0.6, ridgeSharp: 0.2,
     sunAz: -15, sunEl: 62, sunColor: 0xfff0d0, sunIntensity: 2.7, shadowIntensity: 0.95,
     hemiSky: 0xd0e4ff, hemiGround: 0xc8a070, hemiIntensity: 1.35,
@@ -112,11 +112,11 @@ export const ENV_PRESETS = {
   },
   volcano: {
     label: 'Volcano',
-    zenith: 0x1a0a10, skyMid: 0x4a1418, horizon: 0xc8401a, skyCurve: 0.5,
+    zenith: 0x140a0e, skyMid: 0x3a1216, horizon: 0xc8401a, skyCurve: 0.45,
     hazeColor: 0xff6a2a, haze: 0.4,
     bodyAz: 190, bodyEl: 12, bodySize: 0.05, bodyColor: 0xff6040, bodyIntensity: 1.5,
     glowColor: 0xff5020, glow: 0.3,
-    cloudCover: 0.42, cloudLit: 0x5a4048, cloudShade: 0x24161c, cloudUnder: 0xff6a30, cloudRim: 0xff9a5a, cumulus: 0.9, cumulusHeight: 0.25,
+    cloudCover: 0.45, cloudLit: 0x5a4048, cloudShade: 0x24161c, cloudUnder: 0xb84a26, cloudRim: 0xff9a5a, cumulus: 0.9, cumulusHeight: 0.25,
     underGlowColor: 0xff4a10, underGlow: 0.8,
     ridgeColor: 0x2a1418, ridgeColor2: 0x1a0c10, ridgeHaze: 0.3, ridgeSharp: 0.85, cone: 0.09, coneGlow: 0xff6020,
     sunAz: -30, sunEl: 50, sunColor: 0xffc8a8, sunIntensity: 2.2, shadowIntensity: 0.8,
@@ -128,10 +128,10 @@ export const ENV_PRESETS = {
   },
   twilight: {
     label: 'Twilight',
-    zenith: 0x1a1048, skyMid: 0x6a3a9a, horizon: 0x3ac0b8, skyCurve: 0.5,
+    zenith: 0x150c40, skyMid: 0x5a2a8a, horizon: 0x2fc4bc, skyCurve: 0.5,
     hazeColor: 0x5ad0c8, haze: 0.4,
     bodyAz: 165, bodyEl: 14, bodySize: 0.045, bodyColor: 0xf0e8ff, bodyIntensity: 3, moon: 1, moonPhase: 0.55,
-    glowColor: 0xb08aff, glow: 0.3, hGlowColor: 0xff8ac8, hGlow: 0.4,
+    glowColor: 0xb08aff, glow: 0.3, glowPow: 14, hGlowColor: 0xff8ac8, hGlow: 0.22,
     cloudCover: 0.6, cloudLit: 0xd8a0e0, cloudShade: 0x3a2a6a, cloudUnder: 0x48d0c8, cloudRim: 0xffd0f0, cumulus: 0.5, cumulusHeight: 0.16,
     stars: 0.7, milkyWay: 0.3, aurora: 0.8,
     ridgeColor: 0x2a2050, ridgeColor2: 0x1a1438, ridgeHaze: 0.4,
@@ -145,15 +145,15 @@ export const ENV_PRESETS = {
   title: {
     label: 'Title',
     zenith: 0x22357a, skyMid: 0xd8785a, horizon: 0xffb84a, skyCurve: 0.42,
-    hazeColor: 0xffd080, haze: 0.5,
+    hazeColor: 0xffd080, haze: 0.38,
     bodyAz: -15, bodyEl: 3.5, bodySize: 0.065, bodyColor: 0xfff0c0, bodyIntensity: 10, rays: 0.6,
-    glowColor: 0xffb050, glow: 1, glowPow: 3, hGlowColor: 0xff8a30, hGlow: 0.9,
+    glowColor: 0xffb050, glow: 0.7, glowPow: 4, hGlowColor: 0xff8a30, hGlow: 0.8,
     cloudCover: 0.5, cloudLit: 0xffd890, cloudShade: 0x5a4a90, cloudUnder: 0xff8a50, cloudRim: 0xfff0c0, cumulus: 1.0, cumulusHeight: 0.24,
     ridgeColor: 0x7a4a6a, ridgeColor2: 0x4a2a4a,
-    sunAz: 150, sunEl: 22, sunColor: 0xffc080, sunIntensity: 2.7,
+    sunAz: 150, sunEl: 22, sunColor: 0xffcf98, sunIntensity: 2.6,
     hemiSky: 0x8a7ad0, hemiGround: 0x9a6a3a, hemiIntensity: 1.3,
     fogColor: 0xf0a868, fogDensity: 0.01,
-    exposure: 1.05, bloomStrength: 0.75, bloomThreshold: 0.8, saturation: 1.18, contrast: 1.1, vignette: 0.35, tint: [1.06, 1.0, 0.92],
+    exposure: 1.05, bloomStrength: 0.75, bloomThreshold: 0.8, saturation: 1.1, contrast: 1.1, vignette: 0.35, tint: [1.03, 1.0, 0.95],
     particleColor: 0xffd080, particles: 0.45,
   },
 };
@@ -538,7 +538,7 @@ void main() {
 
   vec2 dxz = normalize(d.xz + vec2(1e-5));
   vec2 sxz = normalize(uSunDir.xz + vec2(1e-5));
-  float azs = dot(dxz, sxz) * 0.5 + 0.5;
+  float azs = clamp(dot(dxz, sxz) * 0.5 + 0.5, 0.0, 1.0);
   col = mix(col, uHGlowColor, clamp(pow(azs, 3.0) * exp(-hp * 4.5) * uHGlow, 0.0, 1.0));
   col += uUnderGlowColor * uUnderGlow * exp(-hp * 5.0) * 0.5;
 
@@ -565,7 +565,7 @@ void main() {
   }
   col = mix(col, body, disc);
   if (uRays > 0.0) {
-    float ang = atan(dot(toB, a2), dot(toB, a1));
+    float ang = atan(dot(toB, a2), dot(toB, a1) + 1e-7);
     float r = vnoise(vec2(ang * 7.0, uTime * 0.15)) * 0.6 + vnoise(vec2(ang * 19.0, uTime * 0.1 + 3.0)) * 0.4;
     col += uGlowColor * smoothstep(0.45, 0.85, r) * exp(-dist * 5.0) * smoothstep(uBodySize, uBodySize * 1.6, dist) * uRays * 1.4;
   }
@@ -624,7 +624,7 @@ void main() {
   if (h < 0.0) col = mix(uFogColor, uGround, smoothstep(0.1, 0.6, -h));
   col = mix(col, uFogColor, exp(-abs(h) * 70.0) * 0.8);
 
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(max(col, vec3(0.0)), 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }

@@ -36,6 +36,12 @@ export class Cinematic {
     } else this.arena.setTerrain(terrain, preset, palette);
   }
 
+  /** Build the stage and compile its shaders ahead of the first fight (call while the screen is faded out). */
+  async prewarm(terrain, preset, palette) {
+    this._ensureArena(terrain || '.', preset || 'day', palette);
+    try { this.vfx.precompile?.(this.engine.renderer, this.camera); await this.engine.renderer.compileAsync(this.arena.scene, this.camera); } catch (e) { /* compile lazily */ }
+  }
+
   _model(u) {
     const k = `${u.uid}|${u.promoted ? 1 : 0}`;
     let m = this.models.get(k);
@@ -300,7 +306,7 @@ export class Cinematic {
     await wait(0.35);
     this.audio.sfx('death');
     await tm.play('death');
-    this.vfx.deathBurst(tm.getAnchor('chest'), T.side === 'player' ? 0x7fc8ff : 0xff8a5a);
+    this.vfx.deathBurst(tm.getAnchor('feet'), T.side === 'player' ? 0x7fc8ff : 0xff8a5a);
     await tweens.run(0.8, (t) => tm.setDissolve(t), ease.inQuad);
   }
 

@@ -33,7 +33,7 @@ const showLabels = Q.get('labels') !== '0' && (view === 'lineup' || view === 'sh
 const yawDeg = parseFloat(Q.get('yaw') || '0');
 const quality = Q.get('quality') || 'high';
 const HEROES = ['kael', 'lyra', 'garrick', 'fenn', 'vex', 'mira', 'sora'];
-const BOSSES = ['gorran', 'rask', 'draven', 'varga', 'selene', 'malzaar', 'nidhvar'];
+const BOSSES = ['gorran', 'rask', 'draven', 'varga', 'selene', 'malzaar', 'nidhvar', 'elder'];
 const GENERICS = Object.keys(GENERIC);
 
 // ---------------------------------------------------------------- renderer + scene
@@ -85,11 +85,12 @@ function parseIds() {
   if (Q.get('ids')) return Q.get('ids').split(',').map((s) => s.trim()).filter(Boolean).map((id) => ({ id, promoted }));
   if (view === 'duel') return [{ id: 'kael', promoted }, { id: 'bandit', promoted: false }];
   if (view === 'close') return [{ id: 'kael', promoted }];
+  const half = Math.ceil(GENERICS.length / 2);
   return [
-    ...HEROES.map((id) => ({ id, promoted: false })),
-    ...HEROES.map((id) => ({ id, promoted: true })),
-    ...BOSSES.map((id) => ({ id, promoted: false })),
-    ...GENERICS.map((id) => ({ id, promoted: false })),
+    ...HEROES.map((id) => ({ id, promoted: false, row: 0 })),
+    ...HEROES.map((id) => ({ id, promoted: true, row: 1 })),
+    ...BOSSES.map((id) => ({ id, promoted: false, row: 2 })),
+    ...GENERICS.map((id, i) => ({ id, promoted: false, row: i < half ? 3 : 4 })),
   ];
 }
 const entries = parseIds();
@@ -115,7 +116,9 @@ function layoutRows() {
     for (let i = 0; i < entries.length; i += cols) rows.push(entries.slice(i, i + cols));
     return rows;
   }
-  return [entries.slice(0, 7), entries.slice(7, 14), entries.slice(14, 21), entries.slice(21, 28), entries.slice(28)].filter((r) => r.length);
+  const byRow = [];
+  for (const e of entries) (byRow[e.row] = byRow[e.row] || []).push(e);
+  return byRow.filter((r) => r && r.length);
 }
 
 const labelEls = [];
@@ -161,7 +164,7 @@ function placeCamera() {
     a.ch.setFacing(Math.PI / 2, true); b.ch.setFacing(-Math.PI / 2, true);
     for (let i = 2; i < chars.length; i++) chars[i].ch.root.visible = false;
     const h = Math.max(a.ch.height, b.ch.height);
-    const dist = Math.max(6.0, h * 3.1);
+    const dist = Math.max(4.7, h * 2.7);
     camera.position.set(Math.sin(yaw) * dist, Math.max(0.8, h * 0.55), Math.cos(yaw) * dist);
     camera.lookAt(0, Math.min(h * 0.45, 1.2), 0);
     return;
@@ -282,27 +285,23 @@ addEventListener('resize', () => {
 });
 // ---------------------------------------------------------------- self test (?selftest=1): API conformance + timing
 async function selfTest() {
-  window.__testProgress = 'start';
   const out = [];
   const ok = (cond, msg) => out.push((cond ? 'PASS ' : 'FAIL ') + msg);
   const ids = ['kael', 'lyra', 'fenn', 'sora', 'wolf', 'skeleton', 'wraith', 'golem', 'nidhvar', 'wyvernKnight'];
   const t0 = performance.now();
   for (const id of ids) {
-    window.__testProgress = id;
     const ch = createCharacter(lookFor(id, false), { team: 'enemy', quality: 'high' });
     scene.add(ch.root);
     ch.root.position.set(20, 0, 20);
     // onImpact exactly once at very high speed with big frames
     for (const name of ['attack', 'attack2', 'shoot', 'cast', 'hit', 'dodge', 'victory', 'jump', 'talk', 'levelup']) {
       let n = 0, resolved = false;
-      window.__testProgress = id + '.' + name;
       const p = ch.play(name, { onImpact: () => n++, speed: 25 });
       p.then(() => { resolved = true; });
       for (let i = 0; i < 4; i++) ch.update(0.1);
       await Promise.resolve();
       ok(n === 1 && resolved, `${id}.${name} impact=${n} resolved=${resolved}`);
     }
-    window.__testProgress = id + ' interrupt';
     // interruption still fires the first impact exactly once
     let a = 0, b = 0;
     ch.play('attack', { onImpact: () => a++ });
@@ -316,13 +315,11 @@ async function selfTest() {
     ch.play('attack', { onImpact: () => { tImpact = tt; } });
     while (tt < 1.2) { ch.update(1 / 60); tt += 1 / 60; }
     ok(tImpact > 0.3 && tImpact < 0.62, `${id} attack impact at ${tImpact.toFixed(3)}s`);
-    window.__testProgress = id + ' death';
     // death ends in dead
     await new Promise((res) => { ch.play('death').then(res); for (let i = 0; i < 80; i++) ch.update(1 / 60); });
     ok(ch.state === 'dead', `${id} state after death = ${ch.state}`);
     ch.setState('idle');
     for (const s of ['walk', 'run', 'ready', 'hurt', 'fly', 'idle']) { ch.setState(s); ch.update(0.3); }
-    window.__testProgress = id + ' anchors';
     // anchors
     const v = new THREE.Vector3();
     for (const an of ['weapon', 'hand', 'head', 'chest', 'feet', 'mouth', 'overhead']) {

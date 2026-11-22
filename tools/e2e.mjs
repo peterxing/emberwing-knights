@@ -15,17 +15,24 @@ const until = async (fn, timeout = 60000, label = '') => {
   while (Date.now() - t0 < timeout) { if (await page.evaluate(fn)) return true; await page.waitForTimeout(250); }
   console.log('TIMEOUT waiting for', label); return false;
 };
-const unitScreen = (id) => page.evaluate((id) => {
-  const b = window.__game.battle; const u = b.board.units.find((v) => v.id === id && v.alive) || b.board.units.find((v) => v.side === 'player' && v.alive);
-  return { ...b.tileScreen(u.x, u.y), x0: u.x, y0: u.y };
-}, id);
+const unitScreen = async (id) => {
+  await page.evaluate((id) => {
+    const b = window.__game.battle; const u = b.board.units.find((v) => v.id === id && v.alive) || b.board.units.find((v) => v.side === 'player' && v.alive);
+    b.rig.focus(b.world.tileCenter(u.x, u.y), { instant: true });
+  }, id);
+  await page.waitForTimeout(300);
+  return page.evaluate((id) => {
+    const b = window.__game.battle; const u = b.board.units.find((v) => v.id === id && v.alive) || b.board.units.find((v) => v.side === 'player' && v.alive);
+    return { ...b.tileScreen(u.x, u.y), x0: u.x, y0: u.y };
+  }, id);
+};
 
 try {
   await page.goto(`${base}/?chapter=${process.env.CH || 1}&skip=1&anim=${process.env.ANIM || 'full'}`, { waitUntil: 'load' });
   await until(() => window.__game?.battle?.mode === 'idle' && window.__game.battle.phase === 'player', 90000, 'player phase');
   await page.waitForTimeout(800);
   await shot('1-idle');
-  const k = await unitScreen('kael');
+  const k = await unitScreen(process.env.UNIT || 'kael');
   await page.mouse.move(k.x, k.y); await page.waitForTimeout(150);
   await page.mouse.click(k.x, k.y);
   await page.waitForTimeout(600);

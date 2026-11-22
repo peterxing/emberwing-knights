@@ -35,7 +35,7 @@ export class TitleScene {
     this.amb = this.vfx.ambient('embers', this.world.bounds, { density: 0.8 });
     this.camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.1, 600);
     this.chars = [];
-    const lineup = [['kael', 9, 10, true], ['lyra', 8, 11], ['garrick', 10, 11], ['mira', 7, 10], ['fenn', 11, 10], ['vex', 12, 11], ['sora', 6, 11, true]];
+    const lineup = [['kael', 9, 10, true], ['lyra', 8, 11], ['garrick', 10, 11], ['mira', 7, 10], ['fenn', 10, 9], ['vex', 8, 9], ['sora', 6, 11, true]];
     for (const [id, x, y, promoted] of lineup) {
       const c = createCharacter(lookFor(id, !!promoted), { team: 'player' });
       this.world.tileCenter(x, y, c.root.position);
@@ -82,6 +82,8 @@ export class TitleScene {
 export async function showTitle(game) {
   const { ui, audio, engine } = game;
   const scene = new TitleScene(game);
+  scene.update(0, 0);
+  try { await engine.renderer.compileAsync(scene.scene, scene.camera); } catch (e) { /* compile lazily */ }
   await engine.fade(0, 1.2);
   const el = h('div', 'screen title-screen');
   el.innerHTML = `<div class="logo"><div class="pre">A TACTICAL RPG</div><h1>EMBERWING<br>KNIGHTS</h1>

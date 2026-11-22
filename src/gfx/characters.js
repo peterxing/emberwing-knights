@@ -9,7 +9,6 @@ import { buildMonster, buildWyvern } from './char-monsters.js';
 
 // ------------------------------------------------------------------ shared materials
 const OUTLINE_COLOR = 0x1a1222;
-const flutterTime = { value: 0 };
 let skinOutlineMat = null;
 
 /** Screen-space hull for skinned meshes: uses skinned normals and a per-vertex width attribute. */
@@ -191,7 +190,7 @@ function addFlutter(mat, { amp = 0.03, freq = 5, below = 0.5 }) {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, renderer) => {
     prev(shader, renderer);
-    shader.uniforms.uFlutterTime = flutterTime;
+    shader.uniforms.uFlutterTime = toonGlobals.time;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nuniform float uFlutterTime;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -355,7 +354,6 @@ export class Character {
   update(dt) {
     dt = dt > 0 ? Math.min(dt, 0.25) : 0;
     this._time += dt;
-    flutterTime.value = this._time;
     const ctx = this._ctx;
     ctx.time = this._time; ctx.arrow = false; ctx.glowBoost = 0; ctx.flutter = 0;
     // facing

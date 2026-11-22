@@ -54,6 +54,12 @@ export const actions = {
       const d = manhattan(u.x, u.y, preTarget.x, preTarget.y);
       if (d >= u.atkRange[0] && d <= u.atkRange[1]) { this.startTargeting({ kind: 'attack' }, preTarget); return; }
     }
+    if (preTarget) {
+      const d = manhattan(u.x, u.y, preTarget.x, preTarget.y);
+      const sp = this.usableSpells(u).filter((s) => SPELLS[s].target === 'enemy' && d >= SPELLS[s].range[0] && d <= SPELLS[s].range[1])
+        .sort((a, b) => SPELLS[b].power - SPELLS[a].power)[0];
+      if (sp) { this.startTargeting({ kind: 'spell', spell: sp }, preTarget); return; }
+    }
     const choice = await ui.menu(this.actionItems(u), this.screenPos(u), u.name);
     if (this.mode !== 'menu') return;
     if (choice === null) {
@@ -306,7 +312,7 @@ export const actions = {
     u.alive = false;
     const v = this.view(u);
     audio.sfx('death', { volume: 0.7 });
-    this.vfx.deathBurst(v.char.getAnchor('chest'), u.side === 'player' ? 0x7fc8ff : 0xff8a5a);
+    this.vfx.deathBurst(v.char.getAnchor('feet'), u.side === 'player' ? 0x7fc8ff : 0xff8a5a);
     await v.die();
     if (u.side === 'enemy') {
       state.stats.kills++;
@@ -355,6 +361,7 @@ export const actions = {
     if (!it || !state.useItem(itemId)) return;
     const v = this.view(t);
     const pos = v.char.getAnchor('chest');
+    const feet = v.char.getAnchor('feet');
     this.view(u).char.play('talk');
     if (it.heal) {
       const before = t.hp;
@@ -366,14 +373,14 @@ export const actions = {
     } else if (it.mp) {
       t.mp = Math.min(t.maxMp, t.mp + it.mp);
       audio.sfx('item');
-      this.vfx.buff(pos, 0x8f7dff);
+      this.vfx.buff(feet, 0x8f7dff);
       this.vfx.floatText(v.char.getAnchor('overhead'), `+${it.mp} MP`, { color: '#b9adff', size: 1.4 });
       await wait(0.6);
     } else if (it.stat) {
       t.stats[it.stat] += it.amount;
       if (it.stat === 'hp') t.hp += it.amount;
       audio.sfx('levelUp');
-      this.vfx.buff(pos, 0xffd35a);
+      this.vfx.buff(feet, 0xffd35a);
       ui.toast(`${t.name}: ${it.desc}`, it.icon);
       await wait(0.8);
       v.refreshHp();
@@ -406,7 +413,7 @@ export const actions = {
     this.view(u).faceTile(c.x, c.y);
     audio.sfx('chest');
     await this.world.openChest?.(c.x, c.y);
-    const pos = this.world.tileCenter(c.x, c.y).add(new THREE.Vector3(0, 0.3, 0));
+    const pos = this.world.tileCenter(c.x, c.y);
     this.vfx.chestOpen(pos);
     if (c.gold) { state.gold += c.gold; ui.setGold(state.gold); ui.toast(`Found ${c.gold} gold!`, '◈'); audio.sfx('gold'); }
     if (c.item) {
@@ -435,7 +442,7 @@ export const actions = {
     this.found.add(key(h.x, h.y));
     const info = itemInfo(h.item);
     if (WEAPONS[h.item]) state.addWeapon(h.item); else state.addItem(h.item, 1);
-    const pos = this.world.tileCenter(u.x, u.y).add(new THREE.Vector3(0, 0.4, 0));
+    const pos = this.world.tileCenter(u.x, u.y);
     this.vfx.chestOpen(pos);
     audio.sfx('item');
     ui.toast(`${u.name} dug up ${info?.name || h.item}!`, info?.icon || '✦');

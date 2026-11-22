@@ -5,9 +5,13 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { smoothNormalGeometry } from './toon.js';
 
+/** Degrees to radians. */
 export const D2R = Math.PI / 180;
+/** Clamp v into [a, b]. */
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+/** Linear interpolation. */
 export const lerp = (a, b, t) => a + (b - a) * t;
+/** Hermite smoothstep of x between edges a and b. */
 export const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
 /** Deterministic hash RNG (mulberry-style) so builds and idle twitches are reproducible. */
@@ -450,6 +454,7 @@ export function chainWeightsAxis(def, boneNames, axis) {
 
 // ------------------------------------------------------------------ poses & clips
 // A pose is a Float32Array of 6 floats per bone: Euler XYZ rotation (radians) + position offset.
+/** Easing curves usable as key  values: l, io, i, o, i3, o3, ob (overshoot), h (hold). */
 export const EASE = {
   l: (u) => u,
   io: (u) => u * u * (3 - 2 * u),
@@ -559,6 +564,7 @@ export function addRot(P, bi, dx, dy, dz) {
   const o = bi * 6;
   P[o] += dx * D2R; P[o + 1] += dy * D2R; P[o + 2] += dz * D2R;
 }
+/** Add a position offset to a bone inside a pose. */
 export function addPos(P, bi, x, y, z) {
   if (bi === undefined || bi < 0) return;
   const o = bi * 6 + 3;

@@ -94,6 +94,8 @@ export class Battle {
 
     const kael = this.board.units.find((u) => u.id === 'kael') || this.board.units[0];
     this.rig.focus(this.world.tileCenter(kael.x, kael.y), { dist: 21, yaw: Math.PI / 4, pitch: 0.92, instant: true });
+    try { this.vfx.precompile?.(engine.renderer, this.camera); await engine.renderer.compileAsync(this.scene, this.camera); } catch (e) { /* older drivers: compile lazily */ }
+    if (settings.anim === 'full') await this.game.cinematic.prewarm(this.board.tchar(kael.x, kael.y), this.mapDef.environment, this.mapDef.palette);
 
     this.input = new MapInput(engine.canvas, this.rig, (ray) => this.world.pick(ray), {
       onHover: (t) => this.onHover(t),
