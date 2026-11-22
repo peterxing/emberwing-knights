@@ -70,7 +70,8 @@ export default {
     { say: 'garrick', e: 'determined', t: "That's the spirit. Now use your head as well. Lyra, stay behind us and keep us standing." },
     { say: 'lyra', e: 'determined', t: 'Leave it to me!' },
     { title: ['Chapter I', 'Embers at Dawn'] },
-    { hint: 'Select a unit to see where it can move (blue) and strike (red). Move beside a foe and choose Attack. Defeat Gorran to win — and if Kael falls, all is lost.' },
+    { hint: 'Select a unit to see where it can move (blue) and strike (red). Move beside a foe and choose Attack. Defeat Gorran to win — and if Kael falls, all is lost.',
+      touchHint: 'Tap a unit to see where it can move (blue) and strike (red), then tap a blue tile to move — or tap an enemy to preview the fight and tap it again to attack. Drag to pan, pinch to zoom, twist to rotate. Defeat Gorran to win — if Kael falls, all is lost.' },
   ],
   events: [
     { when: { turn: 2, phase: 'player' }, actions: [

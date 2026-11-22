@@ -68,19 +68,28 @@ export class UI {
       <div class="objective"></div>`;
     this.tr = h('div', 'hud-top-right');
     this.goldChip = h('div', 'gold-chip panel');
+    this.btnCancel = h('button', 'btn small cancel-btn hidden', '✕ Cancel');
+    this.btnCancel.title = 'Cancel (Esc / right-click)';
     this.btnDanger = h('button', 'btn small', 'Danger');
-    this.btnDanger.title = 'Show every tile enemies can strike next turn (D)';
+    this.btnDanger.title = 'Show every tile enemies can strike next turn (R)';
     this.btnEnd = h('button', 'btn small primary', 'End Turn');
-    this.btnEnd.title = 'End the player phase (Enter)';
+    this.btnEnd.title = 'End the player phase';
+    this.btnFs = h('button', 'btn small fs-btn', '⛶');
+    this.btnFs.title = 'Fullscreen';
+    this.btnFs.onclick = async () => {
+      try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); } catch { /* not allowed */ }
+    };
+    if (!document.fullscreenEnabled) this.btnFs.classList.add('hidden');
     this.btnSettings = h('button', 'btn small', '⚙');
     this.btnSettings.title = 'Settings';
-    this.tr.append(this.goldChip, this.btnDanger, this.btnEnd, this.btnSettings);
+    this.tr.append(this.btnCancel, this.goldChip, this.btnDanger, this.btnEnd, this.btnFs, this.btnSettings);
     this.unitCard = h('div', 'unit-card panel ornate off');
     this.terrainCard = h('div', 'terrain-card panel hidden');
     this.hud.append(this.tl, this.tr, this.unitCard, this.terrainCard);
   }
 
   showHud(on) { this.hud.classList.toggle('hidden', !on); }
+  setCancelVisible(on) { this.btnCancel.classList.toggle('hidden', !on); }
   setChapter(num, title) { this.tl.querySelector('.chap').textContent = num; this.tl.querySelector('.title').textContent = title; }
   setTurn(turn, phase) {
     this.tl.querySelector('.turn').textContent = `Turn ${turn}`;
@@ -134,14 +143,15 @@ export class UI {
     this.closeMenu();
     return new Promise((resolve) => {
       const m = h('div', 'action-menu panel ornate interactive');
+      const born = performance.now();
       if (title) m.appendChild(h('div', 'title', esc(title)));
       const els = [];
       items.forEach((it) => {
         if (it.sep) { m.appendChild(h('div', 'menu-sep')); return; }
         const e = h('div', `menu-item${it.disabled ? ' disabled' : ''}`, `<span class="ico">${it.icon || '•'}</span><span>${esc(it.label)}</span>${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}`);
-        e.addEventListener('pointerenter', () => { this.sfx('cursor', { volume: 0.5 }); it.onHover?.(); els.forEach((o) => o.classList.remove('focus')); e.classList.add('focus'); });
+        e.addEventListener('pointerenter', (ev) => { if (ev.pointerType !== 'mouse') return; this.sfx('cursor', { volume: 0.5 }); it.onHover?.(); els.forEach((o) => o.classList.remove('focus')); e.classList.add('focus'); });
         e.addEventListener('pointerleave', () => it.onLeave?.());
-        e.addEventListener('click', (ev) => { ev.stopPropagation(); this.sfx('confirm'); finish(it.id); });
+        e.addEventListener('click', (ev) => { ev.stopPropagation(); if (performance.now() - born < 320) return; this.sfx('confirm'); finish(it.id); });
         els.push(e);
         m.appendChild(e);
       });
@@ -166,7 +176,9 @@ export class UI {
       this.layer.appendChild(m);
       const W = window.innerWidth, H = window.innerHeight;
       const rect = m.getBoundingClientRect();
-      const x = Math.min(Math.max(10, pos.x + 40), W - rect.width - 10);
+      let x = pos.x + 40;
+      if (x + rect.width > W - 10) x = pos.x - 40 - rect.width;
+      x = Math.min(Math.max(10, x), W - rect.width - 10);
       const y = Math.min(Math.max(70, pos.y - rect.height / 2), H - rect.height - 10);
       m.style.left = `${x}px`; m.style.top = `${y}px`;
       this.menuEl = m;

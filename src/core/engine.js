@@ -35,6 +35,8 @@ export class Engine {
     this._buildComposer(quality);
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    window.visualViewport?.addEventListener('resize', () => this.resize());
+    canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.paused = true; this.onContextLost?.(); }, false);
   }
 
   _buildComposer(quality) {
@@ -46,7 +48,12 @@ export class Engine {
     this.renderer.shadowMap.enabled = q.shadow;
     if (this.composer) this.composer.dispose();
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
-    const rt = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y), { type: THREE.HalfFloatType, samples: q.msaa });
+    const ext = this.renderer.extensions;
+    this.floatOK = ext.has('EXT_color_buffer_float') || ext.has('EXT_color_buffer_half_float');
+    const rt = new THREE.WebGLRenderTarget(Math.max(1, size.x), Math.max(1, size.y), {
+      type: this.floatOK ? THREE.HalfFloatType : THREE.UnsignedByteType,
+      samples: this.floatOK ? q.msaa : Math.min(q.msaa, 2),
+    });
     this.composer = new EffectComposer(this.renderer, rt);
     this.renderPass = new RenderPass(this.scene, this.camera);
     this.tiltPass = new ShaderPass(TiltShiftShader);
@@ -59,7 +66,7 @@ export class Engine {
     this.composer.addPass(this.outputPass);
     this.composer.addPass(this.gradePass);
     this.tiltPass.enabled = q.tilt;
-    this.bloomPass.enabled = q.bloom;
+    this.bloomPass.enabled = q.bloom && this.floatOK;
   }
 
   setQuality(quality) {

@@ -1,0 +1,253 @@
+/* ================================================================ Mobile & touch
+   Loaded after styles.css / styles2.css. Breakpoints:
+   - html.touch           : coarse pointer (phones/tablets) -> bigger targets
+   - max-width: 600px     : portrait phones
+   - max-height: 500px    : landscape phones
+   ================================================================================ */
+
+html, body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; touch-action: none; }
+#ui button, #ui .menu-item, #ui .tm, #ui .btn, #ui select { touch-action: manipulation; }
+.camp .main, .modal, .credits, .camp .side { touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+img { -webkit-user-drag: none; user-select: none; }
+
+.fs-btn { display: none; }
+html.touch .fs-btn:not(.hidden) { display: inline-block; }
+.cancel-btn { background: linear-gradient(180deg, #4a4f80, #22264a); border-color: #c9d4ff; color: #eef2ff; }
+
+/* safe areas (notches, home indicators) */
+.hud-top-left { top: max(14px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); }
+.hud-top-right { top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); }
+.unit-card { left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); }
+.terrain-card { right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); }
+.dialogue { bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px)); }
+
+/* bigger touch targets */
+html.touch .menu-item { padding: 12px 14px; font-size: 15.5px; }
+html.touch .action-menu { min-width: 200px; }
+html.touch .btn.small { padding: 9px 12px; font-size: 12px; min-height: 38px; }
+html.touch .title-menu .tm { padding: 10px 20px 10px 28px; }
+html.touch .dialogue .skip { padding: 8px 12px; }
+html.touch .modal .seg .btn { min-height: 40px; }
+
+/* ---------------------------------------------------------------- portrait phones */
+@media (max-width: 600px) {
+  .hud-top-left { left: 8px; right: auto; top: max(8px, env(safe-area-inset-top)); max-width: calc(100vw - 16px); min-width: 0; padding: 7px 12px 8px; }
+  .hud-top-left .chap { font-size: 10px; letter-spacing: 0.14em; }
+  .hud-top-left .title { font-size: 15px; }
+  .hud-top-left .row { margin-top: 3px; font-size: 12px; }
+  .hud-top-left .objective { font-size: 11px; margin-top: 3px; }
+  .hud-top-right { top: calc(max(8px, env(safe-area-inset-top)) + 92px); right: 8px; gap: 5px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100vw - 16px); }
+  .hud-top-right .btn.small { padding: 7px 9px; font-size: 10.5px; min-height: 36px; }
+
+  .unit-card { width: calc(100vw - 16px); left: 8px; bottom: max(8px, env(safe-area-inset-bottom)); grid-template-columns: 58px 1fr; padding: 8px 10px; gap: 8px 10px; }
+  .unit-card .portrait { width: 58px; height: 58px; }
+  .unit-card .name { font-size: 15px; }
+  .unit-card .stats { font-size: 11px; gap: 2px 8px; margin-top: 4px; }
+  .unit-card .weapon-line { font-size: 11px; padding-top: 5px; flex-wrap: wrap; gap: 4px 10px; }
+  .terrain-card { display: none; }
+
+  .hint { top: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 196px); left: 8px; right: 8px; width: auto; font-size: 12.5px; padding: 10px 30px 10px 34px; }
+  .toast-stack { top: 150px; width: 92vw; }
+  .toast { font-size: 13px; padding: 8px 12px; }
+
+  .forecast { top: calc(max(8px, env(safe-area-inset-top)) + 136px); width: calc(100vw - 16px); min-width: 0; grid-template-columns: 1fr 28px 1fr; gap: 6px; padding: 8px 10px; }
+  .forecast .pimg { display: none; }
+  .forecast .side, .forecast .side.right { grid-template-columns: 1fr; }
+  .forecast .fname { font-size: 12.5px; }
+  .forecast .fhp { font-size: 11px; }
+  .forecast .nums { font-size: 12px; gap: 1px 6px; }
+  .forecast .weap { font-size: 10px; }
+  .forecast .mid { font-size: 9px; }
+
+  .dialogue { width: calc(100vw - 16px); height: auto; min-height: 150px; }
+  .dialogue .box { position: relative; inset: auto; min-height: 150px; padding: 26px 16px 16px !important; }
+  .dialogue.narrate .box { padding: 22px 18px !important; }
+  .dialogue .portrait { width: 150px; height: 150px; left: 0; bottom: calc(100% - 6px); }
+  .dialogue.right .portrait { left: auto; right: 0; }
+  .dialogue .portrait img { width: 150px; height: 150px; bottom: 0; }
+  .dialogue .speaker { left: 12px !important; right: auto !important; top: -15px; font-size: 14px; padding: 3px 12px; }
+  .dialogue.right .speaker { left: auto !important; right: 12px !important; }
+  .dialogue .text { font-size: 15.5px; line-height: 1.5; min-height: 84px; }
+  .dialogue .next, .dialogue.right .next { right: 14px !important; bottom: 10px; }
+  .dialogue .skip { top: auto; bottom: calc(100% + 8px); right: auto; left: auto; }
+  .dialogue.left .skip { right: 0; }
+  .dialogue.right .skip { left: 0; }
+  .dialogue.narrate .skip { right: 0; }
+
+  .battle-hud { gap: 8px; padding: 0 8px; }
+  .bh-side { grid-template-columns: 1fr; padding: 7px 9px; }
+  .bh-side .pimg { display: none; }
+  .bh-side .nm { font-size: 13px; }
+  .bh-side .nm small { display: none; }
+  .bh-side .hpbig { grid-template-columns: 1fr 38px; gap: 6px; margin-top: 4px; }
+  .bh-side .hpbig .bar { height: 11px; }
+  .bh-side .hpnum { font-size: 16px; }
+  .bh-side .bstats { font-size: 10px; gap: 7px; }
+
+  .levelup { width: 94vw; grid-template-columns: 86px 1fr; gap: 10px; padding: 12px 14px; }
+  .levelup .lv-port { width: 86px; height: 86px; }
+  .levelup .lv-title { font-size: 20px; }
+  .levelup .lv-stats { font-size: 12.5px; gap: 2px 12px; }
+  .exp-pop { width: 180px; }
+
+  .banner { height: 70px; }
+  .banner .txt { font-size: 27px; letter-spacing: 0.14em; }
+  .banner .sub { font-size: 11px; bottom: 6px; }
+  .chapter-card .ttl { font-size: 34px; text-align: center; padding: 0 12px; }
+  .chapter-card .num { font-size: 13px; letter-spacing: 0.35em; }
+  .chapter-card .line { width: 70vw; }
+  .end-screen h1 { font-size: 44px; }
+
+  .modal { width: 94vw; padding: 16px; max-height: 88vh; overflow-y: auto; }
+  .modal .setrow { grid-template-columns: 1fr; gap: 6px; margin: 12px 0; }
+
+  .camp { grid-template-columns: 1fr; grid-template-rows: auto 1fr; padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); gap: 8px;
+    background: linear-gradient(180deg, rgba(5,6,12,0.55), rgba(5,6,12,0.0) 30%, rgba(5,6,12,0.0) 45%, rgba(5,6,12,0.8) 62%); }
+  .camp .side { padding: 10px 12px; gap: 6px; display: grid; grid-template-columns: 1fr auto; align-items: center; overflow: visible; }
+  .camp .side h2 { font-size: 18px; }
+  .camp .side .next { grid-column: 1 / -1; font-size: 11.5px; }
+  .camp .side .next b { font-size: 14px; }
+  .camp .side .gold-chip { grid-row: 1; grid-column: 2; }
+  .camp .tabs { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+  .camp .tabs .btn { padding: 8px 9px; font-size: 10.5px; flex: 1 1 auto; }
+  .camp .side > div[style] { display: none; }
+  .camp [data-go] { grid-column: 1 / -1; }
+  .camp .main { width: auto; max-height: none; min-height: 0; align-self: stretch; overflow-y: auto; margin-top: 26vh; padding: 12px; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .shop-row { grid-template-columns: 1fr 62px 64px; gap: 6px; font-size: 13px; }
+  .shop-row .own { display: none; }
+}
+
+/* ---------------------------------------------------------------- portrait title screen */
+@media (max-aspect-ratio: 1/1) {
+  .title-screen { justify-content: space-between; align-items: center; padding: calc(env(safe-area-inset-top) + 8vh) 6vw calc(env(safe-area-inset-bottom) + 10vh);
+    background: linear-gradient(180deg, rgba(5,6,12,0.72) 0%, rgba(5,6,12,0.12) 30%, rgba(5,6,12,0) 52%, rgba(5,6,12,0.78) 100%); }
+  .logo { text-align: center; margin-top: 0; }
+  .logo h1 { font-size: clamp(38px, 11.5vw, 76px); }
+  .logo .sub { font-size: clamp(12px, 3.4vw, 20px); letter-spacing: 0.24em; }
+  .logo .flourish { margin: 14px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .title-menu { align-items: center; margin-top: 0; }
+  .title-menu .tm { text-align: center; }
+  .title-menu .tm:hover { transform: none; }
+  .press-start { margin-top: 0; text-align: center; }
+  .title-foot { left: 6vw; right: 6vw; text-align: center; font-size: 10.5px; bottom: calc(env(safe-area-inset-bottom) + 12px); }
+}
+
+/* ---------------------------------------------------------------- landscape phones */
+@media (max-height: 500px) {
+  .hud-top-left { padding: 6px 10px 7px; min-width: 0; max-width: 42vw; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); }
+  .hud-top-left .chap { font-size: 10px; }
+  .hud-top-left .title { font-size: 14px; }
+  .hud-top-left .row { margin-top: 2px; font-size: 11.5px; }
+  .hud-top-left .objective { margin-top: 2px; font-size: 11px; }
+  .hud-top-right { top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); gap: 5px; }
+  .hud-top-right .btn.small { padding: 6px 9px; font-size: 10.5px; min-height: 34px; }
+  .hud-top-right .gold-chip { display: none; }
+
+  .unit-card { width: 290px; grid-template-columns: 50px 1fr; padding: 7px 9px; gap: 8px; bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
+  .unit-card .portrait { width: 50px; height: 50px; }
+  .unit-card .name { font-size: 14px; }
+  .unit-card .cls { font-size: 11px; }
+  .unit-card .stats, .unit-card .weapon-line { display: none; }
+  .barrow { margin-top: 3px; font-size: 10.5px; }
+  .terrain-card { display: none; }
+
+  .hint { top: 58px; width: 300px; font-size: 12px; padding: 8px 28px 8px 30px; line-height: 1.35; }
+  .hint::before { left: 10px; top: 8px; }
+  .toast-stack { top: 56px; }
+
+  .forecast { top: 8px; min-width: 0; width: min(540px, 62vw); padding: 6px 10px; gap: 6px; }
+  .forecast .pimg { width: 36px; height: 36px; }
+  .forecast .side { grid-template-columns: 36px 1fr; }
+  .forecast .side.right { grid-template-columns: 1fr 36px; }
+  .forecast .fname { font-size: 12.5px; }
+  .forecast .nums { font-size: 12px; }
+
+  .action-menu .title { padding: 2px 10px 4px; }
+  html.touch .menu-item { padding: 8px 12px; font-size: 14px; }
+
+  .dialogue { height: 116px; width: min(920px, calc(100vw - 20px)); bottom: max(8px, env(safe-area-inset-bottom)); }
+  .dialogue .box { padding: 16px 20px 10px 168px; }
+  .dialogue.right .box { padding: 16px 168px 10px 20px; }
+  .dialogue.narrate .box { padding: 16px 40px; }
+  .dialogue .portrait { width: 165px; height: 190px; }
+  .dialogue .portrait img { width: 170px; height: 170px; bottom: -4px; }
+  .dialogue .speaker { left: 162px; top: -13px; font-size: 13px; padding: 2px 12px; }
+  .dialogue.right .speaker { right: 162px; }
+  .dialogue .text { font-size: 14px; line-height: 1.42; min-height: 60px; }
+  .dialogue.narrate .text { font-size: 14px; }
+  .dialogue .next { right: 14px; bottom: 6px; }
+  .dialogue.right .next { right: 176px; }
+  .dialogue .skip { top: -30px; }
+
+  .cine .letterbox { height: 6vh; }
+  .battle-hud { bottom: calc(6vh + 6px); gap: 10px; padding: 0 3vw; }
+  .bh-side { padding: 5px 9px; grid-template-columns: 38px 1fr; gap: 8px; }
+  .bh-side .pimg { width: 38px; height: 38px; }
+  .bh-side .nm { font-size: 13px; }
+  .bh-side .hpbig { margin-top: 2px; grid-template-columns: 1fr 44px; }
+  .bh-side .hpbig .bar { height: 10px; }
+  .bh-side .hpnum { font-size: 15px; }
+  .bh-side .bstats { display: none; }
+  .cine-skip { top: calc(6vh + 6px); }
+
+  .levelup { width: min(500px, 92vw); grid-template-columns: 104px 1fr; gap: 12px; padding: 10px 14px; }
+  .levelup .lv-port { width: 104px; height: 104px; }
+  .levelup .lv-title { font-size: 20px; }
+  .levelup .lv-stats { font-size: 12.5px; gap: 1px 14px; }
+  .levelup .lv-name { margin-bottom: 4px; }
+
+  .banner { height: 62px; }
+  .banner .txt { font-size: 30px; }
+  .chapter-card .ttl { font-size: 38px; }
+
+  .logo h1 { font-size: clamp(28px, 6vw, 52px); }
+  .logo .pre { font-size: 10.5px; margin-bottom: 4px; }
+  .logo .sub { font-size: 12px; margin-top: 6px; }
+  .logo .flourish { margin-top: 10px; }
+  .title-menu { margin-top: 3vh; gap: 0; }
+  .title-menu .tm, html.touch .title-menu .tm { font-size: 15px; padding: 6px 16px 6px 24px; }
+  .press-start { margin-top: 4vh; font-size: 13px; }
+  .title-foot { font-size: 10px; bottom: 6px; }
+
+  .modal { max-height: 92vh; overflow-y: auto; padding: 12px 18px; }
+  .modal h2 { font-size: 18px; margin-bottom: 8px; }
+  .modal .setrow { margin: 6px 0; font-size: 13px; }
+  .keys { font-size: 11.5px; }
+
+  .camp { grid-template-columns: 200px 1fr; padding: 8px; gap: 8px; }
+  .camp .side { padding: 10px; gap: 6px; overflow-y: auto; }
+  .camp .side h2 { font-size: 17px; }
+  .camp .side .next { font-size: 11px; }
+  .camp .side .next b { font-size: 13px; }
+  .camp .tabs { gap: 4px; margin-top: 2px; }
+  .camp .tabs .btn { padding: 6px 8px; font-size: 10.5px; }
+  .camp .main { max-height: calc(100vh - 16px); width: min(460px, 100%); padding: 10px 12px; }
+  .hero-grid { grid-template-columns: 1fr; }
+  .end-screen h1 { font-size: 46px; }
+}
+
+@media (max-width: 600px) {
+  .hud-top-left .phase-pill { font-size: 10px; padding: 1px 8px; }
+  .hud-top-right .btn.small { letter-spacing: 0.03em; font-size: 10px; padding: 7px 8px; }
+  .unit-card .barrow { margin-top: 3px; }
+}
+
+/* keep modal actions reachable on short screens */
+.modal .actions { position: sticky; bottom: -16px; margin: 14px -4px -16px; padding: 12px 4px 14px; background: linear-gradient(180deg, rgba(20, 23, 48, 0), rgba(20, 23, 48, 0.97) 35%); z-index: 1; }
+@media (max-height: 500px) {
+  .modal .setrow { grid-template-columns: 120px 1fr; gap: 8px; margin: 5px 0; }
+  .modal .seg .btn, html.touch .modal .seg .btn { min-height: 32px; padding: 5px 10px; font-size: 10.5px; }
+  .modal .keys { font-size: 11px; line-height: 1.5; margin-top: 6px; padding-top: 6px; }
+  .modal .actions { bottom: -12px; margin-bottom: -12px; padding: 8px 4px 10px; }
+}
+
+/* touch screens: no sticky :hover effects (on iOS they can swallow the first tap) */
+@media (hover: none) {
+  .title-menu .tm:hover { color: #f1e6cc; letter-spacing: 0.2em; transform: none; }
+  .title-menu .tm:hover::before { content: none; }
+  .menu-item:hover { background: none; }
+  .menu-item:hover::before { content: none; }
+  .btn:hover { transform: none; filter: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+  .title-menu .tm:active, .menu-item:active { background: linear-gradient(90deg, rgba(233, 198, 111, 0.3), rgba(233, 198, 111, 0.05)); }
+}

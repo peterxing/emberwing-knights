@@ -23,6 +23,7 @@ export class Cinematic {
     this.models = new Map();
     this.camPos = V(0, 1.3, 7.5);
     this.camLook = V(0, 0.75, 0);
+    this._tmpV = V(0, 0, 0);
     this.drift = 0;
     this.fast = false;
     this.unsub = engine.onUpdate((dt, el) => this.update(dt, el));
@@ -62,7 +63,12 @@ export class Cinematic {
     this.vfx?.update(sdt, this.camera);
     this.arena?.update(sdt, el, this.camera);
     this.drift += dt;
-    this.camera.position.copy(this.camPos);
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    const narrow = aspect < 1.25;
+    const fov = narrow ? (aspect < 0.7 ? 44 : 40) : 32;
+    if (this.camera.fov !== fov || Math.abs(this.camera.aspect - aspect) > 1e-3) { this.camera.fov = fov; this.camera.aspect = aspect; this.camera.updateProjectionMatrix(); }
+    const k = narrow ? Math.min(2.6, Math.pow(1.5 / aspect, 0.85)) : 1;
+    this.camera.position.copy(this.camLook).addScaledVector(this._tmpV.subVectors(this.camPos, this.camLook), k);
     this.camera.position.x += Math.sin(this.drift * 0.6) * 0.04;
     this.camera.position.y += Math.sin(this.drift * 0.9) * 0.02;
     if (this.shakeT > 0) {

@@ -54,7 +54,7 @@ export async function runScript(b, actions = []) {
     else if (a.shake) { if (!dialogue.skipping) b.rig.shake(a.shake, 0.5); }
     else if (a.flash) { if (!dialogue.skipping) engine.flash(0xffffff, 0.8 * a.flash, 0.5); }
     else if (a.title) { dialogue.hide(); audio.sfx('promote', { volume: 0.5 }); await ui.chapterCard(a.title[0], a.title[1]); }
-    else if (a.hint) { if (b.game.settings.hints !== false) ui.hint(a.hint); }
+    else if (a.hint) { if (b.game.settings.hints !== false) ui.hint(b.game.touch && a.touchHint ? a.touchHint : a.hint); }
     else if (a.spawn) await spawnUnits(b, a.spawn, a.fx);
     else if (a.join) await joinHero(b, a.join);
     else if (a.recruit) await recruitUnit(b, a.recruit);
@@ -68,7 +68,7 @@ export async function runScript(b, actions = []) {
     }
   }
   dialogue.end();
-  b.mode = prevMode === 'busy' ? 'idle' : prevMode;
+  b.mode = prevMode;
   b.input && (b.input.enabled = true);
 }
 

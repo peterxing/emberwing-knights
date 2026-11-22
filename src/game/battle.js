@@ -113,6 +113,9 @@ export class Battle {
     ui.btnDanger.onclick = () => this.toggleDanger();
     ui.btnDanger.classList.toggle('toggled', this.dangerOn);
     ui.btnSettings.onclick = () => this.game.openSettings();
+    ui.btnCancel.onclick = () => { this.game.audio.sfx('cancel'); this.onCancel(); };
+    ui.setCancelVisible(false);
+    this._cancelShown = false;
   }
 
   addView(u) {
@@ -132,6 +135,8 @@ export class Battle {
     this.vfx.update(dt, this.camera);
     this.overlay.update(dt, el);
     for (const v of this.views.values()) v.update(dt, el);
+    const showCancel = this.phase === 'player' && (this.mode === 'selected' || this.mode === 'target' || this.mode === 'menu');
+    if (showCancel !== this._cancelShown) { this._cancelShown = showCancel; this.game.ui.setCancelVisible(showCancel); }
     this.sparkleT -= dt;
     if (this.sparkleT <= 0) { this.sparkleT = 1.4; this.treasureSense(); }
   }
@@ -247,6 +252,7 @@ export class Battle {
   async playerPhase() {
     const { ui, audio } = this.game;
     this.phase = 'player';
+    this.mode = 'busy';
     ui.setTurn(this.turn, 'player');
     audio.playMusic(this.musicFor('player'), { fade: 0.8 });
     await ui.banner('PLAYER PHASE', `Turn ${this.turn}`, 'player');
@@ -465,9 +471,18 @@ export class Battle {
       return;
     }
     if (this.mode === 'target') {
-      if (u && this.targeting.targets.includes(u)) await this.confirmTarget(u);
-      else { this.game.audio.sfx('cancel'); this.cancelTargeting(); }
+      if (u && this.targeting.targets.includes(u)) {
+        if (this.previewed === u) await this.confirmTarget(u);
+        else {
+          this.hoverTile = { x: u.x, y: u.y };
+          this.overlay.setCursor(this.hoverTile);
+          this.previewTarget(u);
+          this.game.audio.sfx('cursor', { volume: 0.6 });
+        }
+      } else { this.game.audio.sfx('cancel'); this.cancelTargeting(); }
+      return;
     }
+    if (this.mode === 'menu') { this.game.audio.sfx('cancel'); this.game.ui.closeMenu(); }
   }
 
   onCancel() {
@@ -567,6 +582,7 @@ export class Battle {
 
   dispose() {
     this.disposed = true;
+    this.game.ui.setCancelVisible(false);
     this.unsub?.();
     this.input?.dispose();
     this.ambient?.stop?.();

@@ -54,12 +54,16 @@ export class TitleScene {
 
   update(dt, el) {
     this.t += dt;
-    const a = Math.PI / 4 + Math.sin(this.t * 0.06) * 0.32;
-    const d = 8.2;
-    this.camera.position.set(this.center.x + Math.sin(a) * d, this.center.y + 3.1 + Math.sin(this.t * 0.11) * 0.3, this.center.z + Math.cos(a) * d);
-    this.camera.lookAt(this.center.x, this.center.y + 0.35, this.center.z);
     const W = window.innerWidth, H = window.innerHeight;
-    if (W > 820) this.camera.setViewOffset(W, H, -W * 0.17, -H * 0.04, W, H); else this.camera.clearViewOffset();
+    const aspect = W / H;
+    const portrait = aspect < 1;
+    const fov = portrait ? 42 : 32;
+    if (this.camera.fov !== fov) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
+    const a = Math.PI / 4 + Math.sin(this.t * 0.06) * 0.32;
+    const d = portrait ? 8.2 * Math.min(2.0, 1.15 / aspect) : 8.2;
+    this.camera.position.set(this.center.x + Math.sin(a) * d, this.center.y + (portrait ? 4.6 : 3.1) + Math.sin(this.t * 0.11) * 0.3, this.center.z + Math.cos(a) * d);
+    this.camera.lookAt(this.center.x, this.center.y + (portrait ? 0.9 : 0.35), this.center.z);
+    if (W > 820 && !portrait) this.camera.setViewOffset(W, H, -W * 0.17, -H * 0.04, W, H); else this.camera.clearViewOffset();
     this.world.update(dt, el, this.camera);
     this.env.update(dt, el, this.camera);
     this.vfx.update(dt, this.camera);
@@ -88,13 +92,23 @@ export async function showTitle(game) {
   const el = h('div', 'screen title-screen');
   el.innerHTML = `<div class="logo"><div class="pre">A TACTICAL RPG</div><h1>EMBERWING<br>KNIGHTS</h1>
     <div class="sub">THE LOST CITY OF AURELION</div><div class="flourish"></div></div>
-    <div class="press-start">CLICK TO BEGIN</div>
+    <div class="press-start">${game.touch ? 'TAP TO BEGIN' : 'CLICK TO BEGIN'}</div>
     <div class="title-foot">A tribute to the 1990s strategy RPGs we grew up with · Built with three.js · All characters, art, music and story are original</div>`;
   ui.layer.appendChild(el);
   await new Promise((r) => {
-    const go = async () => { window.removeEventListener('keydown', go); el.removeEventListener('pointerdown', go); await audio.init(); r(); };
+    // 'click' (not pointerdown) so the tap is fully consumed before the menu appears, and so iOS unlocks audio.
+    const go = async (e) => {
+      if (e.type === 'keydown' && ['Shift', 'Control', 'Alt', 'Meta', 'Tab'].includes(e.key)) return;
+      if (started0) return; started0 = true;
+      window.removeEventListener('keydown', go); el.removeEventListener('click', go); el.removeEventListener('pointerup', go);
+      let started; try { started = audio.init().catch(() => {}); } catch (err) { console.warn('[audio] init failed', err); started = Promise.resolve(); }
+      await Promise.race([started, new Promise((res) => setTimeout(res, 1500))]);
+      r();
+    };
+    let started0 = false;
     window.addEventListener('keydown', go);
-    el.addEventListener('pointerdown', go);
+    el.addEventListener('click', go);
+    el.addEventListener('pointerup', go);
   });
   audio.playMusic('title', { fade: 2 });
   audio.sfx('promote', { volume: 0.6 });
@@ -110,12 +124,19 @@ export async function showTitle(game) {
   for (const [id, label, dis] of opts) {
     const m = h('div', `tm${dis ? ' disabled' : ''}`, label);
     m.dataset.id = id;
-    m.addEventListener('pointerenter', () => audio.sfx('cursor', { volume: 0.4 }));
+    m.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') audio.sfx('cursor', { volume: 0.4 }); });
     menu.appendChild(m);
   }
   el.appendChild(menu);
+  const born = performance.now();
+  let pick = null;
+  menu.addEventListener('click', (e) => {
+    const t = e.target.closest('.tm');
+    if (!t || t.classList.contains('disabled') || performance.now() - born < 300 || !pick) return;
+    const p = pick; pick = null; p(t.dataset.id);
+  });
   for (;;) {
-    const id = await new Promise((r) => menu.addEventListener('click', (e) => { const t = e.target.closest('.tm'); if (t) r(t.dataset.id); }, { once: true }));
+    const id = await new Promise((r) => { pick = r; });
     audio.sfx('confirm');
     if (id === 'settings') { await openSettings(game); continue; }
     if (id === 'credits') { await showCredits(game, true); audio.playMusic('title'); continue; }
@@ -150,8 +171,11 @@ export function openSettings(game) {
       <div class="setrow"><span>Text speed</span>${seg('textSpeed', [['normal', 'Normal'], ['fast', 'Fast'], ['instant', 'Instant']])}</div>
       <div class="setrow"><span>Graphics</span>${seg('quality', [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']])}</div>
       <div class="setrow"><span>Auto end turn</span>${seg('autoEnd', [[true, 'On'], [false, 'Off']])}</div>
-      <div class="keys"><kbd>Click</kbd> select / move / act · <kbd>Right-click</kbd> / <kbd>Esc</kbd> cancel · <kbd>Drag</kbd> pan · <kbd>Right-drag</kbd> rotate · <kbd>Wheel</kbd> zoom<br>
-      <kbd>WASD</kbd> pan · <kbd>Q</kbd>/<kbd>E</kbd> rotate 90° · <kbd>Arrows</kbd> move cursor · <kbd>Enter</kbd> confirm · <kbd>Tab</kbd> next unit · <kbd>R</kbd> danger zone</div>
+      ${document.fullscreenEnabled ? `<div class="setrow"><span>Fullscreen</span><div class="seg"><button class="btn small" data-fs>${document.fullscreenElement ? 'Exit fullscreen' : 'Go fullscreen'}</button></div></div>` : ''}
+      <div class="keys">${game.touch
+        ? '<b>Tap</b> a unit, then a blue tile to move · <b>Tap</b> an enemy in red range to attack (tap again to confirm) · <b>Drag</b> to pan · <b>Pinch</b> to zoom · <b>Twist</b> two fingers to rotate · <b>✕</b> button cancels'
+        : `<kbd>Click</kbd> select / move / act · <kbd>Right-click</kbd> / <kbd>Esc</kbd> cancel · <kbd>Drag</kbd> pan · <kbd>Right-drag</kbd> rotate · <kbd>Wheel</kbd> zoom<br>
+      <kbd>WASD</kbd> pan · <kbd>Q</kbd>/<kbd>E</kbd> rotate 90° · <kbd>Arrows</kbd> move cursor · <kbd>Enter</kbd> confirm · <kbd>Tab</kbd> next unit · <kbd>R</kbd> danger zone`}</div>
       <div class="actions"><button class="btn primary" data-close>Done</button></div></div>`;
     ui.layer.appendChild(back);
     back.querySelectorAll('input[type=range]').forEach((inp) => inp.addEventListener('input', () => {
@@ -165,9 +189,16 @@ export function openSettings(game) {
       if (v === 'true') v = true; else if (v === 'false') v = false;
       s[g.dataset.name] = v;
       g.querySelectorAll('button').forEach((x) => x.classList.toggle('toggled', x === b));
-      if (g.dataset.name === 'quality') engine.setQuality(v);
+      if (g.dataset.name === 'quality') { engine.setQuality(v); s.qualityManual = true; }
       audio.sfx('select');
     }));
+    back.querySelector('[data-fs]')?.addEventListener('click', async (e) => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      } catch { /* not allowed */ }
+      e.target.textContent = document.fullscreenElement ? 'Exit fullscreen' : 'Go fullscreen';
+    });
     back.querySelector('[data-close]').addEventListener('click', () => { Settings.save(s); back.remove(); audio.sfx('confirm'); resolve(); });
   });
 }

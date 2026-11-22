@@ -63,6 +63,15 @@ Fenn (Archer → Ranger) · Vex (Rogue → Shadowblade, recruitable) · Mira (Ma
 
 Tip: clicking an enemy inside your red range moves you to the best tile and opens the battle forecast.
 
+### Playing on a phone or tablet
+
+The game is fully touch-enabled and works in portrait and landscape (landscape gives the widest view):
+
+- **Tap** a unit, then a blue tile to move — or **tap an enemy** to preview the battle forecast and **tap it again** to attack.
+- **Drag** to pan, **pinch** to zoom, **twist** two fingers to rotate; the **✕ Cancel** button (or the menu's Cancel) undoes a move.
+- **Add to Home Screen** (Safari share menu / Chrome install prompt) to launch it full-screen like an app.
+- Phones start on *Medium* graphics, and the game steps quality down automatically if the frame rate drops.
+
 ## Run locally
 
 ```bash

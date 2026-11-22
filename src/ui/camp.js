@@ -41,11 +41,16 @@ class CampStage {
 
   update(dt, el) {
     this.t += dt;
-    const a = 0.3 + Math.sin(this.t * 0.07) * 0.16;
-    this.camera.position.set(Math.sin(a) * 8.6, 1.55 + Math.sin(this.t * 0.13) * 0.12, Math.cos(a) * 8.6);
-    this.camera.lookAt(0, 0.62, 0);
     const W = window.innerWidth, H = window.innerHeight;
-    if (W > 900) this.camera.setViewOffset(W, H, -W * 0.27, 0, W, H); else this.camera.clearViewOffset();
+    const aspect = W / H;
+    const portrait = aspect < 1;
+    const fov = portrait ? 44 : 34;
+    if (this.camera.fov !== fov) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
+    const a = 0.3 + Math.sin(this.t * 0.07) * 0.16;
+    const d = portrait ? 8.6 * Math.min(1.6, 1.0 / aspect) : 8.6;
+    this.camera.position.set(Math.sin(a) * d, (portrait ? 2.4 : 1.55) + Math.sin(this.t * 0.13) * 0.12, Math.cos(a) * d);
+    this.camera.lookAt(0, portrait ? 0.5 : 0.62, 0);
+    if (W > 900 && !portrait) this.camera.setViewOffset(W, H, -W * 0.27, 0, W, H); else this.camera.clearViewOffset();
     this.arena.update(dt, el, this.camera);
     this.vfx.update(dt, this.camera);
     for (const c of this.chars) c.update(dt);

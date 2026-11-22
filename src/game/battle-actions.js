@@ -26,6 +26,7 @@ export const actions = {
     if (this.chestNear(u)) items.push({ id: 'open', label: 'Open Chest', icon: ICON.open });
     items.push({ sep: true });
     items.push({ id: 'wait', label: 'Wait', icon: ICON.wait });
+    if (this.game.touch) items.push({ id: 'cancel', label: 'Cancel', icon: '✕' });
     return items;
   },
 
@@ -62,7 +63,7 @@ export const actions = {
     }
     const choice = await ui.menu(this.actionItems(u), this.screenPos(u), u.name);
     if (this.mode !== 'menu') return;
-    if (choice === null) {
+    if (choice === null || choice === 'cancel') {
       this.undoMove();
       this.select(u);
       return;
@@ -95,6 +96,7 @@ export const actions = {
   startTargeting(spec, pre = null) {
     const u = this.sel;
     const b = this.board;
+    this.previewed = null;
     let targets = [];
     let range = [1, 1];
     let layer = 'attack';
@@ -122,7 +124,8 @@ export const actions = {
   previewTarget(t) {
     const { ui } = this.game;
     const tg = this.targeting;
-    if (!tg || !t || !tg.targets.includes(t)) { ui.hideForecast(); this.overlay.clearLayer('aoe'); return; }
+    if (!tg || !t || !tg.targets.includes(t)) { this.previewed = null; ui.hideForecast(); this.overlay.clearLayer('aoe'); return; }
+    this.previewed = t;
     const u = this.sel;
     if (tg.kind === 'attack' || (tg.kind === 'spell' && SPELLS[tg.spell].target === 'enemy')) {
       const fc = forecast(this.board, u, t, tg.kind === 'spell' ? tg.spell : null);

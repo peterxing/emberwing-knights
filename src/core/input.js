@@ -63,7 +63,8 @@ export class MapInput {
   down(e) {
     this.canvas.setPointerCapture?.(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, button: e.button, type: e.pointerType });
-    if (this.pointers.size === 2) {
+    if (this.pointers.size >= 2) {
+      this.multi = true;
       const [a, b] = [...this.pointers.values()];
       this.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), ang: Math.atan2(b.y - a.y, b.x - a.x) };
     }
@@ -75,7 +76,8 @@ export class MapInput {
     if (p) {
       const dx = e.clientX - p.x, dy = e.clientY - p.y;
       p.x = e.clientX; p.y = e.clientY;
-      if (Math.hypot(p.x - p.sx, p.y - p.sy) > 7 && this.drag) this.drag.moved = true;
+      const slop = p.type === 'mouse' ? 7 : 12;
+      if (Math.hypot(p.x - p.sx, p.y - p.sy) > slop && this.drag) this.drag.moved = true;
       if (this.cameraEnabled && this.pointers.size === 2 && this.pinch) {
         const [a, b] = [...this.pointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
@@ -109,13 +111,17 @@ export class MapInput {
     if (!p) return;
     const wasDrag = this.drag && this.drag.moved;
     if (this.pointers.size === 0) this.drag = null;
-    if (wasDrag || !this.enabled) return;
+    if (this.multi) { if (this.pointers.size === 0) this.multi = false; return; }
+    if (wasDrag || !this.enabled || e.type === 'pointercancel') return;
     if (p.button === 2) { this.h.onCancel?.(e); return; }
     if (p.button !== 0) return;
     const t = this.tileAt(e.clientX, e.clientY);
     this.lastTile = t;
-    if (p.type !== 'mouse') this.h.onHover?.(t, e);
-    this.h.onClick?.(t, e);
+    if (p.type === 'mouse') { this.h.onClick?.(t, e); return; }
+    // touch / pen: act first, then refresh hover-driven UI (there is no hover before a tap)
+    const r = this.h.onClick?.(t, e);
+    this.h.onHover?.(t, e);
+    return r;
   }
 
   wheel(e) {
