@@ -1,0 +1,59 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>env / arena test</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block}#lbl{position:fixed;left:10px;top:8px;color:#fff;font:14px sans-serif;text-shadow:0 1px 3px #000}</style></head>
+<body><canvas id="gl"></canvas><div id="lbl"></div><script type="module">
+import * as THREE from 'three';
+import { Engine } from '../src/core/engine.js';
+import { World } from '../src/gfx/world.js';
+import { Environment } from '../src/gfx/environment.js';
+import { Arena } from '../src/gfx/arena.js';
+import { lookFor } from '../src/game/data/cast.js';
+import { CHAPTERS } from '../src/game/data/chapters/index.js';
+const q = new URLSearchParams(location.search);
+let createCharacter = null;
+try { ({ createCharacter } = await import('../src/gfx/characters.js')); } catch (e) { console.warn('characters unavailable', e.message); }
+const stub = () => ({ root: new THREE.Group(), update() {}, setFacing() {}, setState() {} });
+const mk = (id, promoted) => { try { return createCharacter ? createCharacter(lookFor(id, promoted), {}) : stub(); } catch (e) { console.warn('char failed', id, e.message); return stub(); } };
+const mode = q.get('mode') || 'map';
+const preset = q.get('preset') || 'day';
+const engine = new Engine(document.getElementById('gl'), 'high');
+document.getElementById('lbl').textContent = `${mode} preset=${preset} ${q.get('terrain') || ''}`;
+if (mode === 'map') {
+  const ch = CHAPTERS[(+q.get('ch') || 1) - 1];
+  const scene = new THREE.Scene();
+  const world = new World({ ...ch.map, environment: preset }, { quality: 'high' });
+  scene.add(world.group);
+  const env = new Environment(scene, engine.renderer, preset, { bounds: world.bounds });
+  const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 600);
+  const c = world.bounds.getCenter(new THREE.Vector3());
+  const d = 30, yaw = Math.PI / 4, pitch = +(q.get('pitch') || 0.85);
+  cam.position.set(c.x + Math.sin(yaw) * Math.cos(pitch) * d, c.y + Math.sin(pitch) * d, c.z + Math.cos(yaw) * Math.cos(pitch) * d);
+  cam.lookAt(c);
+  for (const [id, x, y] of [['kael', 9, 11], ['lyra', 8, 12], ['garrick', 10, 12], ['bandit', 4, 3], ['sora', 12, 12]]) {
+    const ch2 = mk(id); world.tileCenter(x, y, ch2.root.position); scene.add(ch2.root);
+    engine.onUpdate((dt) => ch2.update(dt));
+  }
+  engine.setView(scene, cam);
+  engine.setGrade(env.preset);
+  engine.setTiltShift({ enabled: true, focusY: 0.5, range: 0.17, blur: 2.4 });
+  engine.onUpdate((dt, el) => { world.update(dt, el, cam); env.update(dt, el, cam); });
+} else {
+  const arena = new Arena(engine.renderer, { terrain: q.get('terrain') || '.', preset, palette: q.get('palette') || undefined });
+  const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.1, 400);
+  const a = mk(q.get('a') || 'kael', q.get('promoted') === '1');
+  const b = mk(q.get('b') || 'bandit');
+  a.root.position.copy(arena.rightSpot); b.root.position.copy(arena.leftSpot);
+  a.setFacing(-Math.PI / 2, true); b.setFacing(Math.PI / 2, true);
+  a.setState('ready'); b.setState('ready');
+  arena.scene.add(a.root, b.root);
+  const v = q.get('cam') || 'wide';
+  if (v === 'wide') { cam.position.set(0, 1.25, 7.4); cam.lookAt(0, 0.8, 0); }
+  else if (v === 'low') { cam.position.set(2.2, 0.6, 3.6); cam.lookAt(-0.8, 1.0, 0); }
+  else { cam.position.set(1.0, 1.0, 4.2); cam.lookAt(0.6, 0.8, 0); }
+  engine.setView(arena.scene, cam);
+  engine.setGrade(arena.grade);
+  engine.setTiltShift({ enabled: false });
+  engine.onUpdate((dt, el) => { arena.update(dt, el, cam); a.update(dt); b.update(dt); });
+}
+engine.start();
+</script></body></html>

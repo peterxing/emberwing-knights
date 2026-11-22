@@ -1,0 +1,24 @@
+{
+  "name": "emberwing-knights",
+  "version": "1.0.0",
+  "description": "Emberwing Knights: The Lost City of Aurelion - an anime-style Three.js tactical RPG tribute to 90s strategy RPGs like Flame Dragon Knights 2",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "validate": "node tools/validate.mjs",
+    "simulate": "node tools/simulate.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "dependencies": {
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.65.1",
+    "vite": "^8.3.8"
+  },
+  "type": "module",
+  "license": "MIT"
+}

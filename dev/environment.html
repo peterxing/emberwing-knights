@@ -1,0 +1,207 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Emberwing — environment presets</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden;font:13px/1.3 system-ui,sans-serif}
+canvas{display:block}
+#ui{position:fixed;left:10px;top:8px;color:#fff;text-shadow:0 1px 3px #000;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#ui button{background:#0008;color:#fff;border:1px solid #fff5;border-radius:4px;padding:3px 8px;cursor:pointer}
+#ui button.on{background:#c8803a;border-color:#ffd08a}
+#stats{position:fixed;right:10px;top:8px;color:#fff;text-shadow:0 1px 3px #000}
+</style></head>
+<body><div id="ui"></div><div id="stats"></div><script type="module">
+// Environment preset viewer.  ?preset=day|dawn|sunset|night|desert|volcano|twilight|title
+//   &cam=game (tactics camera, default) | low (eye level toward -Z) | sky (looking up) | title (toward +Z) | back
+//   &grade=0 (skip the game's colour grade pass)  &ui=0 (hide buttons)  &t=<seconds of time offset>
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GradeShader } from '../src/core/postfx.js';
+import { toonMaterial, addOutline, setToonResolution, toonGlobals } from '../src/gfx/toon.js';
+import { Environment, ENV_PRESETS, cloudShadow } from '../src/gfx/environment.js';
+
+const q = new URLSearchParams(location.search);
+const presetName = q.get('preset') || 'day';
+const camMode = q.get('cam') || 'game';
+const tOffset = +(q.get('t') || 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(renderer.domElement);
+setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 400);
+
+// ---------------------------------------------------------------- test terrain: 20x16 tiles + 12 tiles of scenery
+const W = 20, H = 16, M = 12, LV = 0.4;
+const COLORS = { grass: 0x67a845, grass2: 0x7cbc52, sand: 0xdcc48c, stone: 0xa29d92, forest: 0x3d6b2c, hill: 0x8cc456, rock: 0x96918a, road: 0xa8845a, outer: 0x5d8f3e };
+function tileAt(x, y) {
+  if (x >= 13 && x <= 15 && y >= 2 && y <= 5) return ['rock', y === 3 && x === 14 ? 4 : 3];
+  if (x >= 11 && x <= 16 && y >= 1 && y <= 7) return ['hill', 2];
+  if (x >= 2 && x <= 6 && y >= 9 && y <= 13) return ['forest', 1];
+  if (y === 8 || x === 9) return ['road', 1];
+  if (x >= 3 && x <= 7 && y >= 1 && y <= 5) return ['stone', x === 5 && y === 3 ? 2 : 1];
+  if (x >= 14 && y >= 10) return ['sand', y >= 13 ? 1 : 1];
+  if (x >= 10 && x <= 12 && y >= 10 && y <= 14) return ['water', 0];
+  return [(x + y) % 2 ? 'grass' : 'grass2', 1];
+}
+const boxGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, -0.5, 0);
+const tiles = [];
+for (let y = -M; y < H + M; y++) {
+  for (let x = -M; x < W + M; x++) {
+    const inside = x >= 0 && y >= 0 && x < W && y < H;
+    if (inside) { tiles.push([x, y, ...tileAt(x, y)]); continue; }
+    const d = Math.max(-x, x - W + 1, -y, y - H + 1);
+    const n = Math.sin(x * 0.7) * Math.cos(y * 0.6) + Math.sin(x * 0.23 + y * 0.31);
+    tiles.push([x, y, n > 0.9 ? 'forest' : 'outer', Math.max(0, Math.round(1 + n * 0.8 + (d > 6 ? 1 : 0)))]);
+  }
+}
+const solid = tiles.filter((t) => t[2] !== 'water');
+const terrainMat = cloudShadow.apply(toonMaterial({ color: 0xffffff, name: 'testTerrain' }));
+const terrain = new THREE.InstancedMesh(boxGeo, terrainMat, solid.length);
+const m4 = new THREE.Matrix4(), col = new THREE.Color();
+solid.forEach(([x, y, kind, lv], i) => {
+  const top = lv * LV;
+  m4.makeScale(1, top + 1, 1).setPosition(x + 0.5, top, y + 0.5);
+  terrain.setMatrixAt(i, m4);
+  const jitter = 0.94 + ((x * 37 + y * 17) % 7) / 60;
+  terrain.setColorAt(i, col.setHex(COLORS[kind]).multiplyScalar(jitter));
+});
+terrain.receiveShadow = true; terrain.castShadow = true;
+scene.add(terrain);
+addOutline(terrain, { width: 1.2, smoothNormals: true, color: 0x2a2026 });
+
+const water = new THREE.Mesh(new THREE.PlaneGeometry(3, 5).rotateX(-Math.PI / 2), toonMaterial({ color: 0x3aa9b4, transparent: true, opacity: 0.85, gradient: 'flat' }));
+water.position.set(11.5, 0.22, 12.5); water.receiveShadow = true; scene.add(water);
+const bed = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 5), toonMaterial({ color: 0x1b5890 }));
+bed.position.set(11.5, -0.1, 12.5); scene.add(bed);
+
+// trees on forest tiles
+const forestTiles = tiles.filter((t) => t[2] === 'forest');
+const coneGeo = new THREE.ConeGeometry(0.42, 1.1, 8).translate(0, 0.95, 0);
+const trunkGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 6).translate(0, 0.25, 0);
+const trees = new THREE.InstancedMesh(coneGeo, toonMaterial({ color: 0x2e6b48 }), forestTiles.length);
+const trunks = new THREE.InstancedMesh(trunkGeo, toonMaterial({ color: 0x6b4a2f }), forestTiles.length);
+forestTiles.forEach(([x, y, , lv], i) => {
+  const s = 0.85 + ((x * 13 + y * 7) % 5) / 12;
+  m4.makeScale(s, s, s).setPosition(x + 0.5, lv * LV, y + 0.5);
+  trees.setMatrixAt(i, m4); trunks.setMatrixAt(i, m4);
+});
+for (const t of [trees, trunks]) { t.castShadow = true; t.receiveShadow = true; cloudShadow.apply(t.material); scene.add(t); }
+addOutline(trees, { width: 1.5 });
+
+// unit stand-ins: capsules (player blue / enemy red) with heads, plus toon spheres
+const units = new THREE.Group();
+const capGeo = new THREE.CapsuleGeometry(0.22, 0.38, 6, 16).translate(0, 0.41, 0);
+const headGeo = new THREE.SphereGeometry(0.2, 24, 16).translate(0, 0.86, 0);
+const unitDefs = [[8, 9, 0x2c4c9e], [7, 10, 0x2c4c9e], [9, 11, 0xd9ab47], [8, 12, 0xf4f4f8], [14, 4, 0xb3262f], [12, 6, 0xb3262f], [5, 3, 0xb3262f]];
+for (const [x, y, c] of unitDefs) {
+  const [, lv] = tileAt(x, y);
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(capGeo, toonMaterial({ color: c }));
+  const head = new THREE.Mesh(headGeo, toonMaterial({ color: 0xf6d3b9 }));
+  for (const m of [body, head]) { m.castShadow = true; m.receiveShadow = true; addOutline(m, { width: 2 }); g.add(m); }
+  g.position.set(x + 0.5, lv * LV, y + 0.5);
+  units.add(g);
+}
+const orb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 20), toonMaterial({ color: 0xe8503a }));
+orb.position.set(10.5, 0.4 + 0.3, 6.5); orb.castShadow = true; addOutline(orb, { width: 2 }); units.add(orb);
+const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.7, 0.3).multiplyScalar(4) }));
+lantern.position.set(9.5, 1.1, 8.5); units.add(lantern);
+const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.75, 6), toonMaterial({ color: 0x4a3020 }));
+post.position.set(9.5, 0.4 + 0.37, 8.5); post.castShadow = true; units.add(post);
+scene.add(units);
+
+// ---------------------------------------------------------------- environment
+const bounds = new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(W, 1.6 + 4 * LV, H));
+const env = new Environment(scene, renderer, presetName, { bounds, quality: q.get('quality') || 'high', particles: q.get('particles') === '1' });
+window.__env = env; window.__renderer = renderer; window.__camera = camera; window.__scene = scene;
+
+const center = new THREE.Vector3(W / 2, 0.4, H / 2);
+function placeCamera() {
+  if (camMode === 'low') { camera.position.set(W / 2, 3.2, H + 6); camera.lookAt(W / 2, 4.2, -40); }
+  else if (camMode === 'sky') { camera.position.set(W / 2, 3, H + 4); camera.lookAt(W / 2, 22, -30); }
+  else if (camMode === 'title') { camera.position.set(W / 2 + 3, 3.4, -4); camera.lookAt(W / 2 - 2, 1.2, 8); }
+  else if (camMode === 'back') { camera.position.set(W / 2, 3.2, -6); camera.lookAt(W / 2, 4.2, 60); }
+  else {
+    const yaw = +(q.get('yaw') || 45) * Math.PI / 180, pitch = +(q.get('pitch') || 52.7) * Math.PI / 180, d = +(q.get('dist') || 20);
+    camera.position.set(center.x + Math.sin(yaw) * Math.cos(pitch) * d, center.y + Math.sin(pitch) * d, center.z + Math.cos(yaw) * Math.cos(pitch) * d);
+    camera.lookAt(center);
+  }
+}
+placeCamera();
+
+// ---------------------------------------------------------------- post stack (mirrors the game)
+const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt);
+const renderPass = new RenderPass(scene, camera);
+let sceneCalls = 0;
+const rpRender = renderPass.render.bind(renderPass);
+renderPass.render = (...a) => { const c0 = renderer.info.render.calls; rpRender(...a); sceneCalls = renderer.info.render.calls - c0; };
+renderer.info.autoReset = false;
+composer.addPass(renderPass);
+const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), env.preset.bloomStrength, 0.4, env.preset.bloomThreshold);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const grade = new ShaderPass(GradeShader);
+grade.uniforms.uGrain.value = 0;
+grade.enabled = q.get('grade') !== '0';
+composer.addPass(grade);
+
+function applyPost(p) {
+  renderer.toneMappingExposure = p.exposure;
+  bloom.strength = p.bloomStrength;
+  bloom.threshold = p.bloomThreshold;
+  bloom.radius = p.bloomRadius ?? 0.4;
+  grade.uniforms.uSaturation.value = p.saturation;
+  grade.uniforms.uContrast.value = p.contrast;
+  grade.uniforms.uVignette.value = p.vignette;
+  grade.uniforms.uTint.value.set(...p.tint);
+}
+
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  composer.setSize(innerWidth, innerHeight);
+  setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+});
+
+// ---------------------------------------------------------------- UI
+const ui = document.getElementById('ui');
+if (q.get('ui') === '0') ui.style.display = 'none';
+const buttons = {};
+for (const name of Object.keys(ENV_PRESETS)) {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.onclick = () => { env.setPreset(name, 2); for (const k in buttons) buttons[k].classList.toggle('on', k === name); };
+  buttons[name] = b; ui.appendChild(b);
+}
+buttons[env.name]?.classList.add('on');
+const stats = document.getElementById('stats');
+if (q.get('ui') === '0') stats.style.display = 'none';
+
+const timer = new THREE.Timer();
+timer.connect(document);
+let frames = 0, acc = 0;
+renderer.setAnimationLoop((ts) => {
+  timer.update(ts);
+  const dt = timer.getDelta();
+  const el = timer.getElapsed() + tOffset;
+  toonGlobals.time.value = el;
+  env.update(dt, el, camera);
+  applyPost(env.preset);
+  renderer.info.reset();
+  composer.render(dt);
+  frames++; acc += dt;
+  if (acc > 0.5) { stats.textContent = `${env.name}  ${(frames / acc).toFixed(0)} fps  scene draw calls ${sceneCalls}`; frames = 0; acc = 0; }
+});
+</script></body></html>

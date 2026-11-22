@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.snaps/
+*.log
+.DS_Store
+Thumbs.db
+.test-dist/

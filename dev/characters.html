@@ -1,0 +1,361 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Emberwing Knights — character test bench</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fc6ff; font: 12px/1.35 system-ui, sans-serif; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 8px; top: 8px; color: #fff; background: rgba(20, 16, 34, 0.62); padding: 6px 9px; border-radius: 6px; white-space: pre; pointer-events: none; }
+  .lbl { position: fixed; transform: translate(-50%, -100%); color: #fff; font-weight: 600; font-size: 11px; text-shadow: 0 1px 2px #000, 0 0 3px #000; pointer-events: none; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="hud">loading…</div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { toonMaterial, setToonResolution, toonGlobals } from '../src/gfx/toon.js';
+import { CAST, GENERIC, lookFor } from '../src/game/data/cast.js';
+import { createCharacter, preloadCharacterAssets } from '../src/gfx/characters.js';
+
+// ---------------------------------------------------------------- URL parameters
+const Q = new URLSearchParams(location.search);
+const view = Q.get('view') || 'lineup';
+const anim = Q.get('anim') || '';
+const anim2 = Q.get('anim2') || '';
+const freezeT = Q.has('t') ? Math.max(0, parseFloat(Q.get('t')) || 0) : null;
+const promoted = Q.get('promoted') === '1';
+const showLabels = Q.get('labels') !== '0' && (view === 'lineup' || view === 'sheet');
+const yawDeg = parseFloat(Q.get('yaw') || '0');
+const quality = Q.get('quality') || 'high';
+const HEROES = ['kael', 'lyra', 'garrick', 'fenn', 'vex', 'mira', 'sora'];
+const BOSSES = ['gorran', 'rask', 'draven', 'varga', 'selene', 'malzaar', 'nidhvar'];
+const GENERICS = Object.keys(GENERIC);
+
+// ---------------------------------------------------------------- renderer + scene
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+document.body.appendChild(renderer.domElement);
+setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x8fc6ff);
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x6b5a48, 1.2));
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.6);
+sun.position.set(6, 11, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.02;
+scene.add(sun, sun.target);
+
+const groundTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#7fbf5e'; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = 'rgba(40,80,30,0.35)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, 253, 253);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(60, 60); t.anisotropy = 8;
+  return t;
+})();
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI / 2), toonMaterial({ color: 0xffffff, map: groundTex }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.05, 200);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.45, 0.85);
+if (Q.get('bloom') !== '0') composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---------------------------------------------------------------- cast selection + layout
+function parseIds() {
+  if (view === 'sheet') {
+    const id = (Q.get('ids') || 'kael').split(',')[0];
+    return (Q.get('times') || '0,0.2,0.38,0.55,0.75').split(',').map((t) => ({ id, promoted, t: parseFloat(t) }));
+  }
+  if (Q.get('ids')) return Q.get('ids').split(',').map((s) => s.trim()).filter(Boolean).map((id) => ({ id, promoted }));
+  if (view === 'duel') return [{ id: 'kael', promoted }, { id: 'bandit', promoted: false }];
+  if (view === 'close') return [{ id: 'kael', promoted }];
+  return [
+    ...HEROES.map((id) => ({ id, promoted: false })),
+    ...HEROES.map((id) => ({ id, promoted: true })),
+    ...BOSSES.map((id) => ({ id, promoted: false })),
+    ...GENERICS.map((id) => ({ id, promoted: false })),
+  ];
+}
+const entries = parseIds();
+const chars = [];
+
+function teamOf(id) {
+  if (CAST[id]) return CAST[id].side === 'player' ? 'player' : CAST[id].side === 'ally' ? 'ally' : 'enemy';
+  return 'enemy';
+}
+
+function footprint(look) {
+  if (!look) return 1.2;
+  if (look.kind === 'wyrm') return 3.4 * (look.scale || 1);
+  if (look.kind === 'golem') return 1.6 * (look.scale || 1);
+  if (look.mount) return 1.7;
+  return 1.25 * (look.scale || 1);
+}
+
+function layoutRows() {
+  if (Q.get('ids') || view !== 'lineup') {
+    const cols = parseInt(Q.get('cols') || (view === 'sheet' ? String(entries.length) : '7'), 10);
+    const rows = [];
+    for (let i = 0; i < entries.length; i += cols) rows.push(entries.slice(i, i + cols));
+    return rows;
+  }
+  return [entries.slice(0, 7), entries.slice(7, 14), entries.slice(14, 21), entries.slice(21, 28), entries.slice(28)].filter((r) => r.length);
+}
+
+const labelEls = [];
+let rowZ = 0;
+const rows = layoutRows();
+rows.forEach((row, ri) => {
+  const looks = row.map((e) => lookFor(e.id, e.promoted));
+  const widths = looks.map((l) => footprint(l) * (view === 'sheet' ? 1.35 : 1));
+  const total = widths.reduce((a, b) => a + b, 0);
+  let x = -total / 2;
+  const depth = Math.max(...widths.map((w) => Math.min(w, 2.6)));
+  if (ri > 0) rowZ -= depth * 0.5 + 0.6;
+  row.forEach((e, i) => {
+    const look = looks[i];
+    if (!look) { console.warn('unknown id', e.id); x += widths[i]; return; }
+    const ch = createCharacter(look, { team: teamOf(e.id), quality });
+    ch.root.position.set(x + widths[i] / 2, 0, rowZ);
+    scene.add(ch.root);
+    chars.push({ id: e.id + (e.promoted ? '+' : '') + (e.t !== undefined ? '@' + e.t : ''), ch, look, t: e.t });
+    if (showLabels) {
+      const el = document.createElement('div'); el.className = 'lbl'; el.textContent = e.id + (e.promoted ? ' ★' : '');
+      document.body.appendChild(el); labelEls.push(el);
+    }
+    x += widths[i];
+  });
+  rowZ -= depth * 0.5 + 0.6;
+});
+
+// ---------------------------------------------------------------- views
+const box = new THREE.Box3();
+for (const c of chars) box.expandByPoint(c.ch.root.position);
+const center = box.getCenter(new THREE.Vector3());
+const size = box.getSize(new THREE.Vector3());
+const maxH = Math.max(1, ...chars.map((c) => c.ch.height));
+
+function placeCamera() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  const yaw = yawDeg * Math.PI / 180;
+  if (view === 'duel' && chars.length >= 2) {
+    const a = chars[0], b = chars[1];
+    a.ch.root.position.set(-1.6, 0, 0); b.ch.root.position.set(1.6, 0, 0);
+    a.ch.setFacing(Math.PI / 2, true); b.ch.setFacing(-Math.PI / 2, true);
+    for (let i = 2; i < chars.length; i++) chars[i].ch.root.visible = false;
+    const h = Math.max(a.ch.height, b.ch.height);
+    const dist = Math.max(6.0, h * 3.1);
+    camera.position.set(Math.sin(yaw) * dist, Math.max(0.8, h * 0.55), Math.cos(yaw) * dist);
+    camera.lookAt(0, Math.min(h * 0.45, 1.2), 0);
+    return;
+  }
+  if (view === 'close') {
+    const n = chars.length;
+    const dist = Q.has('dist') ? parseFloat(Q.get('dist')) : Math.max(3.4, maxH * 2.6) + (n - 1) * 0.9;
+    const ty = Q.has('ty') ? parseFloat(Q.get('ty')) : maxH * 0.52;
+    const tgt = new THREE.Vector3(center.x, ty, center.z);
+    const pitchC = (Q.has('pitch') ? parseFloat(Q.get('pitch')) : 6) * Math.PI / 180;
+    camera.position.set(tgt.x + Math.sin(yaw) * Math.cos(pitchC) * dist, ty + Math.sin(pitchC) * dist + 0.15, tgt.z + Math.cos(yaw) * Math.cos(pitchC) * dist);
+    camera.lookAt(tgt);
+    return;
+  }
+  const pitch = (view === 'sheet' ? parseFloat(Q.get('pitch') || '8') : 50) * Math.PI / 180;
+  const tgt = new THREE.Vector3(center.x, 0.45, center.z);
+  const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+  const pts = [];
+  for (const c of chars) {
+    const p = c.ch.root.position;
+    const r = Math.min(1.6, footprint(c.look) * 0.5);
+    pts.push(new THREE.Vector3(p.x - r, 0, p.z), new THREE.Vector3(p.x + r, 0, p.z), new THREE.Vector3(p.x, c.ch.height + 0.25, p.z), new THREE.Vector3(p.x, 0, p.z + 0.4));
+  }
+  const fits = (dist) => {
+    camera.position.copy(tgt).addScaledVector(dir, dist);
+    camera.lookAt(tgt);
+    camera.updateMatrixWorld();
+    const v = new THREE.Vector3();
+    return pts.every((p) => { v.copy(p).project(camera); return Math.abs(v.x) < 0.94 && Math.abs(v.y) < 0.86; });
+  };
+  let lo = 2, hi = 200;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+  fits(hi);
+}
+placeCamera();
+const shadowSpan = Math.max(size.x, size.z, 6) * 0.65 + 2;
+Object.assign(sun.shadow.camera, { left: -shadowSpan, right: shadowSpan, top: shadowSpan, bottom: -shadowSpan, near: 0.5, far: 60 });
+sun.position.set(center.x + 6, 14, center.z + 8);
+sun.target.position.copy(center);
+sun.shadow.camera.updateProjectionMatrix();
+if (view !== 'duel') for (const c of chars) c.ch.setFacing(yawDeg * Math.PI / 180 * 0.5 + parseFloat(Q.get('face') || (view === 'sheet' ? '90' : '0')) * Math.PI / 180, true);
+
+// ---------------------------------------------------------------- animation control
+const LOOPS = new Set(['idle', 'walk', 'run', 'ready', 'hurt', 'dead', 'fly']);
+function startAnims() {
+  chars.forEach((c, i) => {
+    const name = view === 'duel' && i === 1 ? (anim2 && LOOPS.has(anim2) ? anim2 : 'ready') : anim;
+    if (!name) return;
+    if (LOOPS.has(name)) c.ch.setState(name);
+    else if (!(view === 'duel' && i === 1)) {
+      const run = () => c.ch.play(name, {
+        onImpact: () => {
+          c.impacts = (c.impacts || 0) + 1;
+          if (view === 'duel' && i === 0 && anim2 && !LOOPS.has(anim2)) chars[1].ch.play(anim2);
+        },
+      });
+      if (freezeT === null && view !== 'sheet') { const again = () => run().then(() => setTimeout(again, 900)); again(); } else run();
+    }
+  });
+  if (view === 'duel' && chars[1] && (!anim2 || LOOPS.has(anim2))) chars[1].ch.setState(anim2 || 'ready');
+}
+startAnims();
+chars.forEach((c, i) => {
+  const ex = (Q.get('expr') || '').split(',');
+  if (ex[0]) c.ch.setExpression(ex[i % ex.length]);
+  if (Q.get('greyed') === '1') c.ch.setGreyed(true);
+  if (Q.has('dissolve')) c.ch.setDissolve(parseFloat(Q.get('dissolve')));
+});
+
+let simTime = 0;
+function step(dt) {
+  simTime += dt;
+  toonGlobals.time.value = simTime;
+  for (const c of chars) c.ch.update(dt);
+}
+if (view === 'sheet') {
+  const DT = 1 / 60;
+  for (const c of chars) { let tt = 0; while (tt + 1e-9 < c.t) { const d = Math.min(DT, c.t - tt); c.ch.update(d); tt += d; } }
+} else if (freezeT !== null) {
+  const DT = 1 / 60;
+  while (simTime + 1e-9 < freezeT) step(Math.min(DT, freezeT - simTime));
+}
+
+// ---------------------------------------------------------------- render loop + HUD
+const hud = document.getElementById('hud');
+function meshCalls(root) { let n = 0; root.traverseVisible((o) => { if (o.isMesh) n++; }); return n; }
+const v = new THREE.Vector3();
+let frames = 0;
+let lastNow = performance.now();
+function frame() {
+  const now = performance.now();
+  const dt = Math.min((now - lastNow) / 1000, 0.05);
+  lastNow = now;
+  if (freezeT === null && view !== 'sheet') step(dt);
+  if (showLabels) chars.forEach((c, i) => {
+    c.ch.getAnchor('overhead', v).project(camera);
+    const el = labelEls[i];
+    if (el) { el.style.left = `${(v.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-v.y * 0.5 + 0.5) * innerHeight}px`; }
+  });
+  renderer.info.autoReset = false;
+  renderer.info.reset();
+  composer.render();
+  if (frames++ % 15 === 0) {
+    const per = chars.map((c) => `${c.id}:${meshCalls(c.ch.root)}`).join(' ');
+    hud.textContent = `view=${view} anim=${anim || '-'} t=${freezeT ?? simTime.toFixed(2)} units=${chars.length}\ncalls(total)=${renderer.info.render.calls} tris=${renderer.info.render.triangles}\nper unit: ${per}`;
+  }
+  window.__ready = true;
+  requestAnimationFrame(frame);
+}
+window.__chars = chars;
+window.__step = step;
+window.__api = { createCharacter, preloadCharacterAssets, lookFor, scene, THREE };
+addEventListener('resize', () => {
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+  placeCamera();
+});
+// ---------------------------------------------------------------- self test (?selftest=1): API conformance + timing
+async function selfTest() {
+  window.__testProgress = 'start';
+  const out = [];
+  const ok = (cond, msg) => out.push((cond ? 'PASS ' : 'FAIL ') + msg);
+  const ids = ['kael', 'lyra', 'fenn', 'sora', 'wolf', 'skeleton', 'wraith', 'golem', 'nidhvar', 'wyvernKnight'];
+  const t0 = performance.now();
+  for (const id of ids) {
+    window.__testProgress = id;
+    const ch = createCharacter(lookFor(id, false), { team: 'enemy', quality: 'high' });
+    scene.add(ch.root);
+    ch.root.position.set(20, 0, 20);
+    // onImpact exactly once at very high speed with big frames
+    for (const name of ['attack', 'attack2', 'shoot', 'cast', 'hit', 'dodge', 'victory', 'jump', 'talk', 'levelup']) {
+      let n = 0, resolved = false;
+      window.__testProgress = id + '.' + name;
+      const p = ch.play(name, { onImpact: () => n++, speed: 25 });
+      p.then(() => { resolved = true; });
+      for (let i = 0; i < 4; i++) ch.update(0.1);
+      await Promise.resolve();
+      ok(n === 1 && resolved, `${id}.${name} impact=${n} resolved=${resolved}`);
+    }
+    window.__testProgress = id + ' interrupt';
+    // interruption still fires the first impact exactly once
+    let a = 0, b = 0;
+    ch.play('attack', { onImpact: () => a++ });
+    ch.update(0.05);
+    const p2 = ch.play('hit', { onImpact: () => b++ });
+    for (let i = 0; i < 10; i++) ch.update(0.1);
+    await p2;
+    ok(a === 1 && b === 1, `${id} interrupt a=${a} b=${b}`);
+    // impact timing at speed 1
+    let tImpact = -1, tt = 0;
+    ch.play('attack', { onImpact: () => { tImpact = tt; } });
+    while (tt < 1.2) { ch.update(1 / 60); tt += 1 / 60; }
+    ok(tImpact > 0.3 && tImpact < 0.62, `${id} attack impact at ${tImpact.toFixed(3)}s`);
+    window.__testProgress = id + ' death';
+    // death ends in dead
+    await new Promise((res) => { ch.play('death').then(res); for (let i = 0; i < 80; i++) ch.update(1 / 60); });
+    ok(ch.state === 'dead', `${id} state after death = ${ch.state}`);
+    ch.setState('idle');
+    for (const s of ['walk', 'run', 'ready', 'hurt', 'fly', 'idle']) { ch.setState(s); ch.update(0.3); }
+    window.__testProgress = id + ' anchors';
+    // anchors
+    const v = new THREE.Vector3();
+    for (const an of ['weapon', 'hand', 'head', 'chest', 'feet', 'mouth', 'overhead']) {
+      ch.getAnchor(an, v);
+      ok(Number.isFinite(v.x + v.y + v.z), `${id} anchor ${an} = ${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`);
+    }
+    ok(ch.height > 0.4 && ch.height < 3.2, `${id} height ${ch.height.toFixed(3)}`);
+    ch.setFacing(Math.PI / 2); for (let i = 0; i < 30; i++) ch.update(1 / 60);
+    ok(Math.abs(ch.facing - Math.PI / 2) < 1e-6 && Math.abs(ch._yaw.rotation.y - Math.PI / 2) < 0.01, `${id} facing turned`);
+    ch.faceTowards(new THREE.Vector3(20, 0, 25), true);
+    ok(Math.abs(ch.facing) < 1e-6, `${id} faceTowards +Z -> ${ch.facing.toFixed(3)}`);
+    ch.setGreyed(true); ch.flash(0xff0000, 0.1); ch.update(0.05); ch.update(0.2); ch.setGreyed(false);
+    ch.setExpression('angry'); ch.update(0.1); ch.setExpression('happy'); ch.update(0.1);
+    ch.setDissolve(0.5); ch.update(0.1); ch.setDissolve(0);
+    ch.dispose();
+    ok(!ch.root.parent, `${id} disposed`);
+  }
+  out.push(`total ${((performance.now() - t0) / 1000).toFixed(2)}s`);
+  // per-frame update cost for 30 units
+  const many = [];
+  const pool = ['kael', 'soldier', 'bandit', 'knight', 'wolf', 'skeleton', 'banditArcher', 'darkMage', 'golem', 'wyvernKnight'];
+  for (let i = 0; i < 30; i++) { const c = createCharacter(lookFor(pool[i % pool.length]), { team: 'enemy' }); c.setState(i % 3 ? 'idle' : 'walk'); many.push(c); }
+  const t1 = performance.now();
+  for (let f = 0; f < 120; f++) for (const c of many) c.update(1 / 60);
+  out.push(`30 units x 120 frames update: ${((performance.now() - t1) / 120).toFixed(3)} ms/frame`);
+  for (const c of many) c.dispose();
+  console.log(out.filter((l) => l.startsWith('FAIL')).length + ' failures');
+  console.log(out.join('\n'));
+  hud.textContent = out.slice(-12).join('\n');
+}
+if (Q.get('selftest') === '1') setTimeout(() => selfTest().catch((e) => console.log('TEST ERROR ' + e.message + '\n' + e.stack)), 500);
+
+preloadCharacterAssets().then(() => requestAnimationFrame(frame));
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>toon test</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block}</style></head>
+<body><script type="module">
+import * as THREE from 'three';
+import { toonMaterial, addOutline, setToonResolution, outlineAll } from '../src/gfx/toon.js';
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.setSize(innerWidth, innerHeight);
+r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFShadowMap;
+r.toneMapping = THREE.NeutralToneMapping;
+document.body.appendChild(r.domElement);
+setToonResolution(innerWidth, innerHeight, r.getPixelRatio());
+const s = new THREE.Scene(); s.background = new THREE.Color(0x8fc6ff);
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 100); cam.position.set(6, 5, 8); cam.lookAt(0, 0.6, 0);
+s.add(new THREE.HemisphereLight(0xcfe6ff, 0x6b5a48, 1.2));
+const sun = new THREE.DirectionalLight(0xfff1d6, 2.6); sun.position.set(5, 9, 4); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 }); s.add(sun);
+const ground = new THREE.Mesh(new THREE.BoxGeometry(10, 0.4, 10), toonMaterial({ color: 0x6fbf5a })); ground.position.y = -0.2; ground.receiveShadow = true; s.add(ground);
+const ball = new THREE.Mesh(new THREE.SphereGeometry(0.8, 48, 32), toonMaterial({ color: 0xe8503a })); ball.position.set(-1.5, 0.8, 0); ball.castShadow = true; s.add(ball);
+const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), toonMaterial({ color: 0x4d7be8 })); box.position.set(1.2, 0.6, 0.5); box.castShadow = true; box.userData.hardEdges = true; s.add(box);
+const tk = new THREE.Mesh(new THREE.TorusKnotGeometry(0.5, 0.18, 128, 16), toonMaterial({ color: 0xf2c94c, gradient: 'anime2' })); tk.position.set(0, 1.2, -1.8); tk.castShadow = true; s.add(tk);
+outlineAll(ball, { width: 2.5 }); outlineAll(box, { width: 2.5 }); outlineAll(tk, { width: 2 });
+r.setAnimationLoop((t) => { tk.rotation.y = t / 1000; r.render(s, cam); });
+</script></body></html>

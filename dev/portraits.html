@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Portraits · Emberwing Knights</title>
+<style>
+  html, body { margin: 0; color: #ebe5d8; font: 13px/1.35 system-ui, sans-serif; }
+  body { min-height: 100vh; background: radial-gradient(circle at 50% 15%, #4b5162, #262a33 72%); }
+  nav { padding: 8px 14px 0; }
+  nav a { color: #9fd0ff; margin-right: 12px; text-decoration: none; }
+  nav a.on { color: #ffd27a; }
+  h2 { margin: 10px 14px 2px; font-size: 14px; font-weight: 600; color: #f3e6c4; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 12px 10px; }
+  figure { margin: 0; padding: 6px; border-radius: 8px; background: rgba(0, 0, 0, .22); text-align: center; }
+  figure img, figure .inl { display: block; }
+  figure.big { background: rgba(0, 0, 0, .12); }
+  figcaption { margin-top: 3px; color: #d2cab9; }
+  .err { color: #ff8080; padding: 12px; white-space: pre-wrap; }
+  #stats { padding: 4px 14px; color: #a8b0c0; }
+</style>
+</head>
+<body>
+<nav id="nav"></nav>
+<div id="stats"></div>
+<div id="app"></div>
+<script type="module">
+import { portraitURL, portraitSVG, EXPRESSIONS, hasPortrait } from '../src/gfx/portraits.js';
+import { CAST, GENERIC } from '../src/game/data/cast.js';
+
+// ?section=grid|expr|promo|close  (extra: ?ids=a,b&expr=x&promoted=1&flip=1&size=300&inline=1)
+const q = new URLSearchParams(location.search);
+const section = q.get('section') || (q.get('ids') ? 'custom' : 'grid');
+const app = document.getElementById('app');
+const inline = q.get('inline') === '1';
+let count = 0, ms = 0;
+
+document.getElementById('nav').innerHTML = ['grid', 'expr', 'promo', 'close']
+  .map((s) => `<a href="?section=${s}" class="${s === section ? 'on' : ''}">${s}</a>`).join('');
+
+function tile(parent, id, opts, size, label) {
+  const fig = document.createElement('figure');
+  if (size >= 400) fig.className = 'big';
+  try {
+    const t0 = performance.now();
+    if (inline) {
+      const div = document.createElement('div');
+      div.className = 'inl';
+      div.style.width = div.style.height = size + 'px';
+      div.innerHTML = portraitSVG(id, opts).replace('width="512" height="512"', `width="${size}" height="${size}"`);
+      fig.appendChild(div);
+    } else {
+      const img = new Image(size, size);
+      img.src = portraitURL(id, opts);
+      img.alt = id;
+      fig.appendChild(img);
+    }
+    ms += performance.now() - t0;
+    count++;
+  } catch (e) {
+    console.error(id, opts, e);
+    fig.innerHTML = `<div class="err" style="width:${size}px;height:${size}px">${id}\n${e.message}</div>`;
+  }
+  const cap = document.createElement('figcaption');
+  cap.textContent = label ?? id;
+  fig.appendChild(cap);
+  parent.appendChild(fig);
+}
+
+function row(title) {
+  if (title) { const h = document.createElement('h2'); h.textContent = title; app.appendChild(h); }
+  const g = document.createElement('div');
+  g.className = 'grid';
+  app.appendChild(g);
+  return g;
+}
+
+const allIds = [...Object.keys(CAST), ...Object.keys(GENERIC)];
+
+if (section === 'grid') {
+  const g = row();
+  for (const id of [...allIds, 'mysteryGuest']) tile(g, id, { expression: 'neutral' }, 200, hasPortrait(id) ? id : `${id} (placeholder)`);
+} else if (section === 'expr') {
+  const size = +(q.get('size') || 150);
+  for (const id of (q.get('ids') || 'kael,lyra,mira').split(',')) {
+    const g = row(id);
+    for (const e of EXPRESSIONS) tile(g, id, { expression: e, promoted: q.get('promoted') === '1' }, size, e);
+  }
+} else if (section === 'promo') {
+  const g = row();
+  for (const id of ['kael', 'lyra', 'garrick', 'fenn', 'vex', 'mira', 'sora']) {
+    tile(g, id, { expression: 'neutral' }, 200, `${id}`);
+    tile(g, id, { expression: 'neutral', promoted: true }, 200, `${id} · promoted`);
+  }
+} else if (section === 'close') {
+  const g = row();
+  const ids = (q.get('ids') || 'kael,lyra,mira,garrick').split(',');
+  ids.forEach((id, i) => tile(g, id, { expression: q.get('expr') || (i === 1 ? 'smile' : 'neutral'), flip: q.get('flip') === '1' }, 512, id));
+} else {
+  const g = row();
+  const size = +(q.get('size') || 300);
+  const exprs = (q.get('expr') || 'neutral').split(',');
+  for (const id of (q.get('ids') || 'kael').split(',')) {
+    for (const e of exprs) tile(g, id, { expression: e, promoted: q.get('promoted') === '1', flip: q.get('flip') === '1' }, size, `${id} · ${e}`);
+  }
+}
+
+document.getElementById('stats').textContent = `${count} portraits · ${(ms / Math.max(1, count)).toFixed(1)} ms avg build`;
+console.log(`portraits: ${count} built, avg ${(ms / Math.max(1, count)).toFixed(2)} ms`);
+</script>
+</body>
+</html>

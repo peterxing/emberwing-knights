@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>VFX test — Emberwing Knights</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font: 12px/1.35 system-ui, sans-serif; }
+  canvas { display: block; }
+  #hud { position: fixed; left: 8px; top: 6px; color: #e8ecf5; text-shadow: 0 1px 2px #000; pointer-events: none; white-space: pre; }
+  #panel { position: fixed; right: 6px; top: 6px; bottom: 6px; width: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  #panel button { font: 11px system-ui, sans-serif; background: #1c2230cc; color: #dfe6f5; border: 1px solid #3a4560; border-radius: 3px; padding: 2px 4px; text-align: left; cursor: pointer; }
+  #panel button:hover { background: #33405acc; }
+  body.frozen #panel { display: none; }
+</style>
+</head>
+<body>
+<div id="hud"></div>
+<div id="panel"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { toonMaterial, outlineAll, setToonResolution, setTint, canvasTexture } from '../src/gfx/toon.js';
+import { VFX, SPELL_NAMES } from '../src/gfx/vfx.js';
+
+const params = new URLSearchParams(location.search);
+const fxParam = params.get('fx');
+const tParam = parseFloat(params.get('t') ?? '0.6');
+const view = params.get('view') === 'map' ? 'map' : 'close';
+const light = params.get('bg') === 'light';
+const seed = parseInt(params.get('seed') ?? '1234', 10);
+const S = view === 'map' ? 1.5 : 1;
+
+// ---------------------------------------------------------------- renderer / scene (mirrors the game setup)
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(renderer.domElement);
+setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(light ? 0x8fc6ff : 0x10141c);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 200);
+if (view === 'map') { camera.position.set(0, 12.5, 13); camera.lookAt(0, 0, 0); }
+else { camera.position.set(0.3, 1.55, 5.6); camera.lookAt(0, 0.8, 0); }
+
+scene.add(new THREE.HemisphereLight(light ? 0xcfe6ff : 0x9fb4d8, light ? 0x6b5a48 : 0x2a2420, light ? 1.2 : 0.9));
+const sun = new THREE.DirectionalLight(0xfff1d6, light ? 2.6 : 1.8);
+sun.position.set(4, 9, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
+scene.add(sun);
+
+const groundTex = canvasTexture(256, 256, (ctx, w, h) => {
+  ctx.fillStyle = light ? '#6fbf5a' : '#323946';
+  ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = light ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(0, 0, w, h);
+}, { repeat: true });
+groundTex.repeat.set(40, 40);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), toonMaterial({ map: groundTex, rim: 0 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function capsule(x, color) {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.51, 6, 16), toonMaterial({ color }));
+  m.position.set(x, 0.475, 0);
+  m.castShadow = true;
+  outlineAll(m, { width: 2 });
+  scene.add(m);
+  return m;
+}
+const caster = capsule(-1.6, 0x4d7be8);
+const target = capsule(1.6, 0xe8503a);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.4, 0.85));
+composer.addPass(new OutputPass());
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  setToonResolution(innerWidth, innerHeight, renderer.getPixelRatio());
+});
+
+// ---------------------------------------------------------------- effects under test
+// &textpass=1 demonstrates the optional post-bloom overlay for damage numbers (VFX textLayer).
+const textPass = params.get('textpass') === '1';
+const TEXT_LAYER = 30;
+const vfx = new VFX(scene, { seed, textLayer: textPass ? TEXT_LAYER : undefined });
+window.vfx = vfx;
+vfx.precompile(renderer, camera);
+function renderFrame() {
+  composer.render();
+  if (!textPass) return;
+  const bg = scene.background;
+  scene.background = null;
+  renderer.autoClear = false;
+  camera.layers.set(TEXT_LAYER);
+  renderer.render(scene, camera);
+  camera.layers.set(0);
+  renderer.autoClear = true;
+  scene.background = bg;
+}
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const casterChest = V(-1.6, 0.55, 0), targetChest = V(1.6, 0.55, 0);
+const casterFeet = V(-1.6, 0, 0), targetFeet = V(1.6, 0, 0);
+const head = V(1.6, 1.0, 0);
+const fwd = V(1, 0, 0);
+let flashT = -1;
+
+function onImpact(label, dmg = 87, opts = {}) {
+  return () => {
+    console.log(`[impact] ${label} t=${vfx.time.toFixed(3)}`);
+    vfx.floatText(head, String(dmg), opts);
+    flashT = 0;
+  };
+}
+
+const FX = {
+  hitSpark: () => vfx.hitSpark(targetChest, { dir: V(1, 0.25, 0), scale: S }),
+  hitCrit: () => vfx.hitSpark(targetChest, { crit: true, color: 0xff9a3a, dir: V(1, 0.25, 0), scale: S }),
+  slash: () => vfx.slash(targetChest, { color: 0x9fdcff, dir: V(1, -0.9, 0), scale: S }),
+  slashCrit: () => vfx.slash(targetChest, { color: 0xffb35c, dir: V(1, -0.9, 0), crit: true, scale: S }),
+  thrust: () => vfx.slash(targetChest, { color: 0xbfe6ff, dir: fwd, thrust: true, scale: S }),
+  floatText: () => vfx.floatText(head, '128', { size: 1 }),
+  floatCrit: () => { vfx.floatText(head, '342', { crit: true }); vfx.floatText(head, 'CRITICAL!', { crit: true, size: 0.7 }); },
+  floatHeal: () => vfx.floatText(head, '+56', { heal: true }),
+  floatMiss: () => vfx.floatText(head, 'MISS'),
+  burst: () => vfx.burst(targetChest, { count: 40, color: 0xff66cc, speed: 4, texture: 'star', size: 0.18, drag: 2, gravity: 2, scale: S }),
+  ...Object.fromEntries(['arrow', 'fireball', 'iceShard', 'darkOrb', 'holyOrb', 'boltOrb'].map((k) => [k,
+    () => vfx.projectile(k, casterChest, targetChest, { scale: S, onImpact: onImpact(k, 64) })])),
+  ...Object.fromEntries(SPELL_NAMES.map((n) => [n, () => vfx.spell(n, {
+    from: casterChest, to: targetChest, scale: S,
+    onImpact: onImpact(n, n.startsWith('heal') ? '+120' : 245, { heal: n.startsWith('heal') }),
+  }).then(() => console.log(`[done] ${n} t=${vfx.time.toFixed(3)}`))])),
+  magicCircle: () => vfx.magicCircle(targetFeet, { color: 0x8fd8ff, radius: 1.2 * S, duration: 2 }),
+  aura: () => { const a = vfx.aura(targetFeet, { color: 0xff5a3a, radius: 0.6 * S }); setTimer(2.4, () => a.stop()); },
+  levelUp: () => vfx.levelUp(targetFeet),
+  promotion: () => vfx.promotion(targetFeet),
+  deathBurst: () => vfx.deathBurst(targetFeet, 0xff8a3a),
+  dust: () => { vfx.dust(targetFeet); vfx.dust(casterFeet, { scale: 1.4 }); },
+  splash: () => vfx.splash(targetFeet),
+  sparkle: () => vfx.sparkle(V(1.6, 0.9, 0.2)),
+  chestOpen: () => vfx.chestOpen(targetFeet),
+  buff: () => vfx.buff(targetFeet, 0x7fd8ff),
+  ...Object.fromEntries(['embers', 'fireflies', 'pollen', 'snow', 'ash', 'leaves', 'motes', 'sand'].map((k) => [`amb-${k}`, () => {
+    const h = vfx.ambient(k, new THREE.Box3(V(-7, 0, -4), V(7, 4, 4)));
+    setTimer(2.8, () => h.stop());
+  }])),
+};
+const DURATION = { promotion: 3, levelUp: 2, blizzard: 2.4, inferno: 2.3, tempest: 2.3, summon: 2.2, breath: 2.2 };
+
+// timers driven by the VFX clock so frozen captures stay deterministic
+const timers = [];
+function setTimer(delay, fn) { timers.push({ t: vfx.time + delay, fn }); }
+function runTimers() {
+  for (let i = 0; i < timers.length; i++) if (vfx.time >= timers[i].t) { timers[i].fn(); timers.splice(i, 1); i--; }
+}
+
+const hud = document.getElementById('hud');
+function visibleVfxDrawCalls() {
+  let n = 0;
+  vfx.root.traverseVisible((o) => { if (o.isMesh || o.isSprite) n++; });
+  return n;
+}
+function stepVfx(dt) {
+  vfx.update(dt, camera);
+  runTimers();
+  if (flashT >= 0) {
+    flashT += dt;
+    setTint(target, 0xffffff, Math.max(0, 0.8 - flashT * 5));
+    if (flashT > 0.2) { flashT = -1; setTint(target, 0xffffff, 0); }
+  }
+}
+
+if (params.get('atlas')) {
+  // ---------------------------------------------------------------- texture inspection
+  document.body.classList.add('frozen');
+  renderer.domElement.style.display = 'none';
+  document.body.style.background = params.get('atlas') === 'light' ? '#8a8f99' : '#0b0d12';
+  document.body.style.overflow = 'auto';
+  for (const tex of [vfx.atlas, vfx.runeTex, vfx.wingTex]) {
+    const c = tex.image;
+    c.style.cssText = 'height:340px;margin:6px;border:1px solid #333;vertical-align:top';
+    document.body.appendChild(c);
+  }
+} else if (fxParam) {
+  // ---------------------------------------------------------------- frozen deterministic capture
+  document.body.classList.add('frozen');
+  if (!FX[fxParam]) console.error(`unknown fx ${fxParam}`);
+  stepVfx(0);
+  FX[fxParam]?.();
+  const steps = Math.round(tParam * 60);
+  let peak = 0;
+  for (let i = 0; i < steps; i++) { stepVfx(1 / 60); peak = Math.max(peak, vfx.stats().particles); }
+  const st = vfx.stats();
+  hud.textContent = `${fxParam}  t=${tParam.toFixed(2)}s  ${view}`;
+  renderFrame();
+  console.log('[stats]', JSON.stringify({ ...st, peakParticles: peak, vfxDrawCalls: visibleVfxDrawCalls() }));
+  renderer.setAnimationLoop(renderFrame);
+} else {
+  // ---------------------------------------------------------------- interactive / auto-cycle
+  const names = Object.keys(FX);
+  const panel = document.getElementById('panel');
+  let auto = true;
+  const autoBtn = document.createElement('button');
+  autoBtn.textContent = '⏯ auto-cycle: on';
+  autoBtn.onclick = () => { auto = !auto; autoBtn.textContent = `⏯ auto-cycle: ${auto ? 'on' : 'off'}`; };
+  panel.appendChild(autoBtn);
+  let current = '', next = 0, idx = 0;
+  const play = (n) => { current = n; console.log(`[play] ${n} @${vfx.time.toFixed(2)}`); FX[n](); };
+  for (const n of names) {
+    const b = document.createElement('button');
+    b.textContent = n;
+    b.onclick = () => play(n);
+    panel.appendChild(b);
+  }
+  let last = performance.now();
+  let fps = 60, peak = 0;
+  renderer.setAnimationLoop(() => {
+    const now = performance.now();
+    const dt = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    fps = fps * 0.95 + (dt > 0 ? 1 / dt : 60) * 0.05;
+    if (auto && vfx.time >= next) {
+      const n = names[idx++ % names.length];
+      play(n);
+      next = vfx.time + (DURATION[n] ?? 1.9);
+    }
+    const t0 = performance.now();
+    stepVfx(dt);
+    const cpu = performance.now() - t0;
+    renderFrame();
+    const st = vfx.stats();
+    peak = Math.max(peak, st.particles);
+    hud.textContent = `${current}\nfps ${fps.toFixed(0)}  vfx cpu ${cpu.toFixed(2)} ms\nparticles ${st.particles} (peak ${peak})  vfx draws ${visibleVfxDrawCalls()}\nview=${view} (add ?view=map / ?fx=name&t=0.6)`;
+  });
+}
+</script>
+</body>
+</html>
