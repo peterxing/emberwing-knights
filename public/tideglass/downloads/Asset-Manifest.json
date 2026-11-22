@@ -1,0 +1,98 @@
+{
+  "collection": "Emberwing / The Tideglass Court",
+  "format": "glTF 2.0 binary, self-contained",
+  "units": "metres",
+  "gltf_up": "+Y",
+  "blender_up": "+Z",
+  "frames_per_second": 24,
+  "assets": [
+    {
+      "file": "VesperglassDrake.glb",
+      "bytes": 2148020,
+      "sha256": "ebaca437ca41329166d72db021bb0f3f7430f5ac2c7ae128b73b940e45612fa3",
+      "triangles_placed": 48728,
+      "mesh_primitives_placed": 14,
+      "materials": 14,
+      "embedded_images": 0,
+      "skins": 1,
+      "joints": 52,
+      "animations": [
+        {
+          "name": "VD.Greeting - Rosewindow Flare",
+          "seconds": 2.667,
+          "moving_channels": 35
+        },
+        {
+          "name": "VD.Idle - Lantern Breathing",
+          "seconds": 2.667,
+          "moving_channels": 35
+        }
+      ]
+    },
+    {
+      "file": "IriaVale.glb",
+      "bytes": 3268896,
+      "sha256": "80015cf066b4c6cf06bd551770d8e932415c7c3d8c7cc707b4a55c8ca25fd26a",
+      "triangles_placed": 69900,
+      "mesh_primitives_placed": 16,
+      "materials": 12,
+      "embedded_images": 0,
+      "skins": 1,
+      "joints": 50,
+      "animations": [
+        {
+          "name": "Iria Vale | Breathing Idle",
+          "seconds": 2.667,
+          "moving_channels": 21
+        },
+        {
+          "name": "Iria Vale | Signal Raise",
+          "seconds": 2.417,
+          "moving_channels": 22
+        }
+      ]
+    },
+    {
+      "file": "TideLock.glb",
+      "bytes": 336536,
+      "sha256": "1d5796b589e5bcbe6e43e2a9a67a83b8d0fe23707f256123b935b48e2c96fb91",
+      "triangles_placed": 5120,
+      "mesh_primitives_placed": 13,
+      "materials": 10,
+      "embedded_images": 0,
+      "skins": 1,
+      "joints": 9,
+      "animations": [
+        {
+          "name": "TideLock | Unseal",
+          "seconds": 2.667,
+          "moving_channels": 9
+        }
+      ]
+    },
+    {
+      "file": "SignalCourt.glb",
+      "bytes": 2867052,
+      "sha256": "174debdaf990ef73a7c7fa597a4910e9b82ad2c28685cf0c78716915d6ed0b04",
+      "triangles_placed": 9476,
+      "mesh_primitives_placed": 22,
+      "materials": 13,
+      "embedded_images": 3,
+      "skins": 0,
+      "joints": 0,
+      "animations": []
+    },
+    {
+      "file": "SurveyPaver_1m.glb",
+      "bytes": 2019848,
+      "sha256": "0698c81d6e8551ccd3027141bfeb2cda138d37ab3f4bc4613586596e8ab466ca",
+      "triangles_placed": 76,
+      "mesh_primitives_placed": 5,
+      "materials": 5,
+      "embedded_images": 3,
+      "skins": 0,
+      "joints": 0,
+      "animations": []
+    }
+  ]
+}

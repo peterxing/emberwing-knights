@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node tools/tideglass-offline.mjs",
     "preview": "vite preview",
-    "validate": "node tools/validate.mjs",
+    "validate": "node tools/validate.mjs && npm run test:tideglass",
+    "test:tideglass": "node --test tools/tideglass-rules.test.mjs",
     "simulate": "node tools/simulate.mjs"
   },
   "keywords": [],

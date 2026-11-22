@@ -2,6 +2,18 @@
 
 **▶ Play in your browser: https://peterxing.github.io/emberwing-knights/**
 
+**[Play The First Signal — a standalone Tideglass side story](https://peterxing.github.io/emberwing-knights/tideglass/).**
+Guide Iria Vale and the Vesperglass Drake across a tidal survey court. Both allies get two actions per round:
+read the pennant crest, compass rose and waylight, anticipate the next surge, then bring Iria to the lock with
+the three marks before high tide. Recovering the Tide Almanac is a playable victory condition, not a cutscene.
+The original Blender rigs animate in the live 3D court. The same game works with [just the keyboard-accessible
+tactical map](https://peterxing.github.io/emberwing-knights/tideglass/?view=map), even without WebGL.
+No account or install is needed. This chapter saves separately and never replaces a campaign slot.
+
+[Editable Blender scene](https://peterxing.github.io/emberwing-knights/tideglass/downloads/Tideglass.blend) ·
+[Five GLB models and five animation clips](https://peterxing.github.io/emberwing-knights/tideglass/downloads/Tideglass-Game-Assets.zip) ·
+[Download the self-contained map edition for offline play](https://peterxing.github.io/emberwing-knights/tideglass/downloads/The-First-Signal.html)
+
 An anime-style tactical RPG built with **three.js** — a love letter to the 1990s Taiwanese and Japanese strategy RPGs,
 especially *Flame Dragon Knights II* (炎龍騎士團2, Dynasty International, 1995). It keeps that era's formula — grid
 tactics, side-view battle cutscenes, big anime portraits in story scenes, class changes and hidden treasure — and
@@ -48,8 +60,8 @@ Fenn (Archer → Ranger) · Vex (Rogue → Shadowblade, recruitable) · Mira (Ma
   Prefer speed? Switch to quick on-map animations in Settings.
 - **Presentation:** cel shading with screen-space outlines, rim light, procedural terrain shaders, animated water and
   lava, swaying foliage, eight sky/lighting presets (dawn → volcanic twilight), bloom, tilt-shift and colour grading.
-- **Everything is procedural** — 3D characters and monsters, 30 anime portraits with 11 expressions each (SVG),
-  12 music tracks and ~40 sound effects (Web Audio). No image, model or audio files are shipped.
+- **The main campaign is procedural** — 3D characters and monsters, 30 anime portraits with 11 expressions each (SVG),
+  12 music tracks and ~40 sound effects (Web Audio). The separate Tideglass side story loads original Blender models on demand.
 
 ## Controls
 

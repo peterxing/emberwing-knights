@@ -1,0 +1,8 @@
+# Blender Asset Catalog Definition File
+VERSION 1
+
+043cc640-efa0-5479-959f-3b7efbe7b2cc:Tideglass/Creatures:Creatures
+26cf8f87-8a9b-54f2-b0e1-123606ccac5f:Tideglass/Characters:Characters
+45026d78-561e-5ce6-be1b-3fcaffcbb874:Tideglass/Mechanisms:Mechanisms
+e7fa2d14-810d-51b4-bb27-857694d5c8ca:Tideglass/Environments:Environments
+fd77f4bd-3ddc-5cf0-8605-6822e9056997:Tideglass/Modules:Modules

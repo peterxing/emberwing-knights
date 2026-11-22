@@ -122,12 +122,14 @@ export async function showTitle(game) {
       ['continue', latest ? `Continue<small class="tm-sub">${esc(sub)}</small>` : 'Continue', !latest],
       ['load', 'Load Game', false],
       ['new', 'New Game', false],
+      ['tideglass', 'The First Signal<small class="tm-sub">Side story</small>', false],
       ['settings', 'Settings', false],
       ['credits', 'Credits', false],
     ];
     menu.innerHTML = '';
     for (const [id, label, dis] of opts) {
-      const m = h('div', `tm${dis ? ' disabled' : ''}`, label);
+      const m = h(id === 'tideglass' ? 'a' : 'div', `tm${dis ? ' disabled' : ''}`, label);
+      if (id === 'tideglass') m.href = './tideglass/';
       m.dataset.id = id;
       m.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') audio.sfx('cursor', { volume: 0.4 }); });
       menu.appendChild(m);
@@ -140,7 +142,7 @@ export async function showTitle(game) {
   let pick = null;
   menu.addEventListener('click', (e) => {
     const t = e.target.closest('.tm');
-    if (!t || t.classList.contains('disabled') || performance.now() - born < 300 || !pick) return;
+    if (!t || t.tagName === 'A' || t.classList.contains('disabled') || performance.now() - born < 300 || !pick) return;
     const p = pick; pick = null; p(t.dataset.id);
   });
   const leave = async (result) => {
