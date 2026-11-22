@@ -24,7 +24,7 @@ import { toonMaterial, addOutline, setToonResolution, toonGlobals } from '../src
 import { ENV_PRESETS } from '../src/gfx/environment.js';
 
 const q = new URLSearchParams(location.search);
-const { Arena } = await import(q.get('mod') === 'tmp' ? '../src/gfx/arena-new.tmp.js' : '../src/gfx/arena.js');
+const { Arena } = await import('../src/gfx/arena.js');
 let terrain = q.get('terrain') || '.';
 let preset = q.get('preset') || 'day';
 const palette = q.get('palette') || undefined;
